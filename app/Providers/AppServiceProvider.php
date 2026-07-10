@@ -2,11 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\OAuthClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configurePassport();
     }
 
     /**
@@ -36,15 +38,20 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+    }
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+    protected function configurePassport(): void
+    {
+        Passport::useClientModel(OAuthClient::class);
+        Passport::tokensExpireIn(now()->addMinutes(15));
+        Passport::refreshTokensExpireIn(now()->addDays(30));
+
+        // Every client is a first-party workflow app that skips authorization,
+        // so the consent screen is never rendered. Binding it keeps the
+        // authorize endpoint resolvable and makes the invariant explicit.
+        Passport::authorizationView(fn (): never => abort(
+            500,
+            'The consent screen is disabled; all clients are first-party.',
+        ));
     }
 }
