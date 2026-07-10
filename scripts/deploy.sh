@@ -113,7 +113,14 @@ if [[ ! -L "public/storage" ]]; then
 fi
 
 step "Fixing permissions"
-find storage bootstrap/cache -user "$(id -un)" -exec chmod 755 {} + 2>/dev/null || true
+# php-fpm runs as www-data; storage/, bootstrap/cache and the SQLite database
+# must be group-writable and setgid so files created at runtime keep the
+# www-data group. Keep the Passport keys non-world-readable — league/oauth2-server
+# refuses to load a key that is group/other readable beyond 600/660.
+chgrp -R www-data storage bootstrap/cache database 2>/dev/null || true
+find storage bootstrap/cache database -type d -exec chmod 2775 {} + 2>/dev/null || true
+find storage bootstrap/cache database -type f -exec chmod 664 {} + 2>/dev/null || true
+chmod 660 storage/oauth-private.key storage/oauth-public.key 2>/dev/null || true
 ok "Permissions set"
 
 step "Reloading PHP-FPM"
