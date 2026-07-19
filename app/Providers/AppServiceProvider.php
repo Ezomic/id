@@ -6,6 +6,7 @@ use App\Models\OAuthClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 
@@ -38,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+
+        // Preloaded-asset Link headers on pages with many chunks (e.g. /login)
+        // overflow nginx's fastcgi header buffer and 502. Disable preloading;
+        // the modulepreload tags are unnecessary behind the Vite manifest.
+        Vite::usePreloadTagAttributes(false);
     }
 
     protected function configurePassport(): void
