@@ -81,6 +81,14 @@ step "Installing Composer dependencies"
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --quiet
 ok "Composer up to date"
 
+# Clear the previous release's cached config/routes BEFORE building. The
+# Wayfinder Vite plugin generates route helpers from the live routes during the
+# build; a stale route cache makes it miss newly added routes and the build
+# fails on the missing import. (Caches are rebuilt after migrations below.)
+step "Clearing stale caches"
+$PHP artisan optimize:clear
+ok "Caches cleared"
+
 step "Building frontend assets"
 npm ci --no-audit --no-fund --silent
 npm run build --silent
