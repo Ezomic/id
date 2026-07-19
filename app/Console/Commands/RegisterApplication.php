@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Admin\CreateApplication;
 use App\Models\Application;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use Laravel\Passport\ClientRepository;
 
 class RegisterApplication extends Command
 {
@@ -13,7 +13,7 @@ class RegisterApplication extends Command
 
     protected $description = 'Register a workflow app as an OAuth client (authorization_code + PKCE)';
 
-    public function handle(ClientRepository $clients): int
+    public function handle(CreateApplication $createApplication): int
     {
         $slug = Str::slug($this->argument('slug'));
 
@@ -23,24 +23,17 @@ class RegisterApplication extends Command
             return self::FAILURE;
         }
 
-        $client = $clients->createAuthorizationCodeGrantClient(
-            name: $this->argument('name'),
-            redirectUris: [$this->argument('redirect')],
-            confidential: true,
-        );
-
-        Application::create([
+        $result = $createApplication->handle([
             'name' => $this->argument('name'),
             'slug' => $slug,
-            'oauth_client_id' => $client->getKey(),
-            'active' => true,
+            'redirect_uri' => $this->argument('redirect'),
         ]);
 
         $this->info("Registered application [{$slug}].");
         $this->newLine();
         $this->line('Add these to the client app .env:');
-        $this->line('  THIJSSENSOFTWARE_ID_CLIENT_ID='.$client->getKey());
-        $this->line('  THIJSSENSOFTWARE_ID_CLIENT_SECRET='.$client->plainSecret);
+        $this->line('  THIJSSENSOFTWARE_ID_CLIENT_ID='.$result['client_id']);
+        $this->line('  THIJSSENSOFTWARE_ID_CLIENT_SECRET='.$result['client_secret']);
 
         return self::SUCCESS;
     }
