@@ -144,6 +144,12 @@ function accent(app: LandingApp): string {
                                 : 'Sign in with Thijssensoftware'
                         }}
                     </Link>
+                    <a
+                        href="#why"
+                        class="inline-flex items-center rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold transition hover:border-brand"
+                    >
+                        How it works
+                    </a>
                 </div>
 
                 <div class="mt-8 flex flex-wrap gap-x-5 gap-y-2">
@@ -181,6 +187,8 @@ function accent(app: LandingApp): string {
                     <line
                         v-for="(app, i) in hubApps"
                         :key="app.slug"
+                        class="hub-line"
+                        :style="{ animationDelay: `${i * 0.08}s` }"
                         x1="200"
                         y1="200"
                         :x2="linePoint(i, hubApps.length).x"
@@ -194,6 +202,10 @@ function accent(app: LandingApp): string {
                 <span
                     class="absolute top-1/2 left-1/2 z-10 flex size-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[26px] bg-brand text-brand-foreground shadow-lg"
                 >
+                    <span
+                        class="pulse pointer-events-none absolute inset-0 rounded-[26px] border-2 border-brand"
+                        aria-hidden="true"
+                    />
                     <svg viewBox="0 0 40 40" fill="none" class="size-12">
                         <path
                             d="M14 10v20M20 10l7 10-7 10"
@@ -248,6 +260,130 @@ function accent(app: LandingApp): string {
                 </span>
             </div>
         </section>
+
+        <section id="why" class="border-t border-border">
+            <div class="mx-auto max-w-6xl px-6 py-16 lg:py-20">
+                <p
+                    class="font-mono text-xs font-semibold tracking-[0.16em] text-brand uppercase"
+                >
+                    Why one identity
+                </p>
+                <h2
+                    class="mt-3 max-w-xl text-3xl font-semibold tracking-tight text-balance"
+                >
+                    A control tower for every account you own.
+                </h2>
+
+                <div class="mt-8 grid gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-border bg-card p-6">
+                        <div
+                            class="mb-3.5 flex size-11 items-center justify-center rounded-xl bg-brand/12 text-brand"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="size-5"
+                            >
+                                <rect
+                                    x="4"
+                                    y="11"
+                                    width="16"
+                                    height="10"
+                                    rx="2"
+                                />
+                                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold tracking-tight">
+                            Passwordless by design
+                        </h3>
+                        <p class="mt-1.5 text-sm text-muted-foreground">
+                            There is no password column. People sign in with a
+                            device passkey or a one-time code sent to their
+                            inbox.
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-border bg-card p-6">
+                        <div
+                            class="mb-3.5 flex size-11 items-center justify-center rounded-xl bg-brand/12 text-brand"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="size-5"
+                            >
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="1.5"
+                                />
+                                <rect
+                                    x="14"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="1.5"
+                                />
+                                <rect
+                                    x="3"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="1.5"
+                                />
+                                <path d="M14 17.5h7M17.5 14v7" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold tracking-tight">
+                            Launch from one place
+                        </h3>
+                        <p class="mt-1.5 text-sm text-muted-foreground">
+                            The portal shows every app you can reach. One click
+                            and you land signed in, no second login.
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-border bg-card p-6">
+                        <div
+                            class="mb-3.5 flex size-11 items-center justify-center rounded-xl bg-brand/12 text-brand"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="size-5"
+                            >
+                                <path
+                                    d="M12 3l8 4v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7z"
+                                />
+                                <path d="M9 12l2 2 4-4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold tracking-tight">
+                            Access you control
+                        </h3>
+                        <p class="mt-1.5 text-sm text-muted-foreground">
+                            Grant or revoke an app per person from the console.
+                            Access is checked on every token, live.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </template>
 
@@ -266,10 +402,40 @@ function accent(app: LandingApp): string {
         transform: translate(-50%, -50%) scale(1);
     }
 }
+
+.hub-line {
+    opacity: 0;
+    animation: line-in 0.7s ease forwards;
+}
+@keyframes line-in {
+    to {
+        opacity: 0.8;
+    }
+}
+
+.pulse {
+    animation: pulse-ring 2.8s ease-out infinite;
+}
+@keyframes pulse-ring {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1.9);
+        opacity: 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .node {
+    .node,
+    .hub-line {
         opacity: 1;
         animation: none;
+    }
+    .pulse {
+        animation: none;
+        opacity: 0;
     }
 }
 </style>
