@@ -3,6 +3,26 @@
 use App\Models\Bookmark;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
+
+it('lists only your own bookmarks, newest first', function () {
+    $user = User::factory()->create();
+    Bookmark::factory()->for($user)->create(['title' => 'Older']);
+    $newest = Bookmark::factory()->for($user)->create(['title' => 'Newest']);
+    $newest->forceFill(['created_at' => now()->addMinute()])->save();
+    Bookmark::factory()->create(['title' => 'Someone else']);
+
+    $this->actingAs($user)
+        ->get(route('bookmarks.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Bookmarks')
+            ->has('bookmarks', 2)
+            ->where('bookmarks.0.title', 'Newest')
+            ->where('bookmarks.0.read', false)
+            ->where('bookmarks.1.title', 'Older')
+        );
+});
 
 it('saves a link and pulls its title and preview image', function () {
     Http::fake([
