@@ -42,7 +42,9 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
      */
     public function applications(): BelongsToMany
     {
-        return $this->belongsToMany(Application::class)->withTimestamps();
+        return $this->belongsToMany(Application::class)
+            ->withPivot(['pinned', 'position', 'last_launched_at'])
+            ->withTimestamps();
     }
 
     /**

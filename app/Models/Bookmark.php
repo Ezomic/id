@@ -19,12 +19,14 @@ use Illuminate\Support\Carbon;
  * @property string|null $image
  * @property string|null $note
  * @property list<string>|null $tags
+ * @property bool $pinned
+ * @property int|null $position
  * @property Carbon|null $read_at
  * @property Carbon|null $archived_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['url', 'title', 'domain', 'image', 'note', 'tags', 'read_at', 'archived_at'])]
+#[Fillable(['url', 'title', 'domain', 'image', 'note', 'tags', 'pinned', 'position', 'read_at', 'archived_at'])]
 class Bookmark extends Model
 {
     /** @use HasFactory<BookmarkFactory> */
@@ -68,6 +70,8 @@ class Bookmark extends Model
     {
         return [
             'tags' => 'array',
+            'pinned' => 'boolean',
+            'position' => 'integer',
             'read_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
