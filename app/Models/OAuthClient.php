@@ -6,6 +6,11 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Laravel\Passport\Client as PassportClient;
 use Laravel\Passport\Scope;
 
+/**
+ * Passport casts this column to an array but does not declare it.
+ *
+ * @property list<string> $redirect_uris
+ */
 class OAuthClient extends PassportClient
 {
     /**
