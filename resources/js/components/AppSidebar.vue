@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Boxes, LayoutGrid, Users } from '@lucide/vue';
+import { Bookmark, Boxes, LayoutGrid, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +17,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as adminApplications } from '@/routes/admin/applications';
 import { index as adminUsers } from '@/routes/admin/users';
+import { index as bookmarks } from '@/routes/bookmarks';
 import type { NavItem } from '@/types';
 
 const page = usePage();
@@ -27,6 +28,11 @@ const mainNavItems = computed<NavItem[]>(() => [
         title: 'Portal',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Bookmarks',
+        href: bookmarks(),
+        icon: Bookmark,
     },
     ...(isAdmin.value
         ? [

@@ -35,6 +35,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');
     Route::post('bookmarks', [BookmarkController::class, 'store'])->name('bookmarks.store');
     Route::put('bookmarks/{bookmark}', [BookmarkController::class, 'update'])->name('bookmarks.update');
     Route::delete('bookmarks/{bookmark}', [BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
