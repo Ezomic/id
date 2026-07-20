@@ -55,6 +55,11 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
+      # Passport's signing keys are gitignored, so the api guard cannot parse a
+      # token without them and the userinfo tests fail with "Invalid key supplied".
+      - name: Generate Passport Keys
+        run: php artisan passport:keys --no-interaction
+
       - name: Build Assets
         run: npm run build
 
