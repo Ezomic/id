@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
+use App\Http\Controllers\Settings\SignInHistoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
@@ -17,6 +18,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/sessions', [SessionController::class, 'index'])->name('sessions.edit');
     Route::delete('settings/sessions/others', [SessionController::class, 'destroyOthers'])->name('sessions.destroyOthers');
     Route::delete('settings/sessions/{id}', [SessionController::class, 'destroy'])->name('sessions.destroy');
+
+    Route::get('settings/sign-in-history', [SignInHistoryController::class, 'index'])->name('sign-in-history.edit');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
 });
