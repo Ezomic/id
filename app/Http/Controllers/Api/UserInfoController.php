@@ -31,7 +31,8 @@ class UserInfoController extends Controller
             'sub' => (string) $user->getKey(),
             'name' => $user->name,
             'email' => $user->email,
-            'applications' => $user->applications()
+            'applications' => Application::query()
+                ->whereIn('id', $user->accessibleApplicationIds())
                 ->where('active', true)
                 ->orderBy('slug')
                 ->pluck('slug'),

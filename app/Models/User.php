@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Passport\Contracts\OAuthenticatable;
@@ -57,9 +58,36 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
         return $this->hasMany(Bookmark::class);
     }
 
+    /**
+     * Groups this user belongs to. Group grants are one source of app access.
+     *
+     * @return BelongsToMany<Group, $this>
+     */
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class);
+    }
+
+    /**
+     * Effective app access: the union of direct grants (application_user) and
+     * grants inherited from the user's groups (application_group).
+     *
+     * @return Collection<int, int>
+     */
+    public function accessibleApplicationIds(): Collection
+    {
+        $direct = $this->applications()->pluck('applications.id');
+
+        $viaGroups = Application::query()
+            ->whereHas('groups', fn ($query) => $query->whereIn('groups.id', $this->groups()->select('groups.id')))
+            ->pluck('id');
+
+        return $direct->merge($viaGroups)->unique()->values();
+    }
+
     public function canAccess(Application $application): bool
     {
-        return $this->applications()->whereKey($application)->exists();
+        return $this->accessibleApplicationIds()->contains($application->getKey());
     }
 
     /**

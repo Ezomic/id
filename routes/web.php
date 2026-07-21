@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
 use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\BookmarkController;
@@ -62,6 +63,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('access-requests', [AdminAccessRequestController::class, 'index'])->name('access-requests.index');
     Route::post('access-requests/{accessRequest}/approve', [AdminAccessRequestController::class, 'approve'])->name('access-requests.approve');
     Route::post('access-requests/{accessRequest}/deny', [AdminAccessRequestController::class, 'deny'])->name('access-requests.deny');
+
+    Route::get('groups', [GroupController::class, 'index'])->name('groups.index');
+    Route::post('groups', [GroupController::class, 'store'])->name('groups.store');
+    Route::put('groups/{group}', [GroupController::class, 'update'])->name('groups.update');
+    Route::delete('groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 });
 
 require __DIR__.'/settings.php';

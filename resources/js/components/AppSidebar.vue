@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bookmark, Boxes, KeyRound, LayoutGrid, Users } from '@lucide/vue';
+import {
+    Bookmark,
+    Boxes,
+    KeyRound,
+    LayoutGrid,
+    Users,
+    UsersRound,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +24,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as adminAccessRequests } from '@/routes/admin/access-requests';
 import { index as adminApplications } from '@/routes/admin/applications';
+import { index as adminGroups } from '@/routes/admin/groups';
 import { index as adminUsers } from '@/routes/admin/users';
 import { index as bookmarks } from '@/routes/bookmarks';
 import type { NavItem } from '@/types';
@@ -46,6 +54,11 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: 'Users',
                   href: adminUsers(),
                   icon: Users,
+              },
+              {
+                  title: 'Groups',
+                  href: adminGroups(),
+                  icon: UsersRound,
               },
               {
                   title: 'Access requests',
