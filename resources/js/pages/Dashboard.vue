@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 import { dashboard } from '@/routes';
 import { index as bookmarksIndex } from '@/routes/bookmarks';
+import { launch as launchApp, pin as pinRoute, reorder } from '@/routes/portal';
 
 interface PortalApp {
     id: number;
@@ -13,6 +14,8 @@ interface PortalApp {
     accent: string | null;
     launch_url: string | null;
     can_access: boolean;
+    pinned: boolean;
+    position: number | null;
 }
 
 interface PortalBookmark {
@@ -21,12 +24,23 @@ interface PortalBookmark {
     title: string | null;
     domain: string | null;
     image: string | null;
+    pinned: boolean;
+    position: number | null;
+}
+
+interface RecentApp {
+    id: number;
+    name: string;
+    initials: string;
+    accent: string | null;
+    launch_url: string | null;
 }
 
 const props = defineProps<{
     applications: PortalApp[];
     accessibleCount: number;
     bookmarks: PortalBookmark[];
+    recentApps: RecentApp[];
 }>();
 
 defineOptions({
@@ -40,11 +54,29 @@ const firstName = computed(
     () => page.props.auth?.user?.name?.split(' ')[0] ?? 'there',
 );
 
+// Local copies so a drag can reorder optimistically before the server confirms.
+const localApps = ref<PortalApp[]>([...props.applications]);
+const localBookmarks = ref<PortalBookmark[]>([...props.bookmarks]);
+
+watch(
+    () => props.applications,
+    (value) => (localApps.value = [...value]),
+);
+watch(
+    () => props.bookmarks,
+    (value) => (localBookmarks.value = [...value]),
+);
+
 const search = ref('');
 const filter = ref<'all' | 'mine' | 'locked'>('all');
 
+const query = computed(() => search.value.trim().toLowerCase());
+
+// Reordering only makes sense against the full, unfiltered list.
+const canReorder = computed(() => query.value === '' && filter.value === 'all');
+
 const filtered = computed(() =>
-    props.applications.filter((app) => {
+    localApps.value.filter((app) => {
         if (filter.value === 'mine' && !app.can_access) {
             return false;
         }
@@ -53,35 +85,31 @@ const filtered = computed(() =>
             return false;
         }
 
-        const q = search.value.trim().toLowerCase();
-
-        if (!q) {
+        if (!query.value) {
             return true;
         }
 
         return `${app.name} ${app.description ?? ''} ${app.slug}`
             .toLowerCase()
-            .includes(q);
+            .includes(query.value);
     }),
 );
 
-function accent(app: PortalApp): string {
-    return app.accent ?? '#B7863A';
-}
-
 const filteredBookmarks = computed(() => {
-    const q = search.value.trim().toLowerCase();
-
-    if (!q) {
-        return props.bookmarks;
+    if (!query.value) {
+        return localBookmarks.value;
     }
 
-    return props.bookmarks.filter((bookmark) =>
+    return localBookmarks.value.filter((bookmark) =>
         `${bookmark.title ?? ''} ${bookmark.domain ?? ''} ${bookmark.url}`
             .toLowerCase()
-            .includes(q),
+            .includes(query.value),
     );
 });
+
+function accent(app: { accent: string | null }): string {
+    return app.accent ?? '#B7863A';
+}
 
 const brokenImages = ref(new Set<number>());
 
@@ -89,11 +117,59 @@ function showsImage(bookmark: PortalBookmark): boolean {
     return Boolean(bookmark.image) && !brokenImages.value.has(bookmark.id);
 }
 
-function bookmarkMonogram(bookmark: PortalBookmark): string {
-    return (bookmark.title ?? bookmark.domain ?? '?')
-        .trim()
-        .charAt(0)
-        .toUpperCase();
+function monogram(value: string | null): string {
+    return (value ?? '?').trim().charAt(0).toUpperCase();
+}
+
+function togglePin(type: 'app' | 'bookmark', id: number, pinned: boolean) {
+    router.patch(
+        pinRoute().url,
+        { type, id, pinned: !pinned },
+        { preserveScroll: true },
+    );
+}
+
+// --- drag to reorder ---
+
+const dragging = ref<{ list: 'app' | 'bookmark'; index: number } | null>(null);
+
+function onDragStart(list: 'app' | 'bookmark', index: number) {
+    if (!canReorder.value) {
+        return;
+    }
+
+    dragging.value = { list, index };
+}
+
+function onDrop(list: 'app' | 'bookmark', index: number) {
+    const from = dragging.value;
+    dragging.value = null;
+
+    if (!from || from.list !== list || from.index === index) {
+        return;
+    }
+
+    if (list === 'app') {
+        const items = [...localApps.value];
+        items.splice(index, 0, items.splice(from.index, 1)[0]);
+        localApps.value = items;
+        persist('app', items);
+
+        return;
+    }
+
+    const items = [...localBookmarks.value];
+    items.splice(index, 0, items.splice(from.index, 1)[0]);
+    localBookmarks.value = items;
+    persist('bookmark', items);
+}
+
+function persist(type: 'app' | 'bookmark', items: { id: number }[]) {
+    router.patch(
+        reorder().url,
+        { type, ids: items.map((item) => item.id) },
+        { preserveScroll: true, preserveState: true },
+    );
 }
 
 const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
@@ -123,6 +199,34 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
             </p>
         </div>
 
+        <div v-if="recentApps.length" class="flex flex-col gap-2">
+            <h2
+                class="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+            >
+                Recently used
+            </h2>
+            <div class="flex flex-wrap gap-2">
+                <a
+                    v-for="app in recentApps"
+                    :key="app.id"
+                    :href="launchApp(app.id).url"
+                    class="group flex items-center gap-2.5 rounded-xl border border-border bg-card py-2 pr-4 pl-2 no-underline transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                    <span
+                        class="flex size-8 items-center justify-center rounded-lg text-sm font-extrabold text-white"
+                        :style="{
+                            background: `linear-gradient(150deg, color-mix(in srgb, ${accent(app)} 82%, white), ${accent(app)})`,
+                        }"
+                    >
+                        {{ app.initials }}
+                    </span>
+                    <span class="text-sm font-semibold tracking-tight">{{
+                        app.name
+                    }}</span>
+                </a>
+            </div>
+        </div>
+
         <div class="flex flex-wrap items-center gap-3">
             <div class="relative min-w-[220px] flex-1">
                 <svg
@@ -140,8 +244,8 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 <input
                     v-model="search"
                     type="text"
-                    placeholder="Search apps..."
-                    aria-label="Search apps"
+                    placeholder="Search apps and bookmarks..."
+                    aria-label="Search apps and bookmarks"
                     class="w-full rounded-xl border border-border bg-card py-2.5 pr-4 pl-10 text-sm transition outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
                 />
             </div>
@@ -174,18 +278,24 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
         <div class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4">
             <component
                 :is="app.can_access ? 'a' : 'div'"
-                v-for="app in filtered"
+                v-for="(app, index) in filtered"
                 :key="app.id"
-                :href="
-                    app.can_access ? (app.launch_url ?? undefined) : undefined
-                "
+                :href="app.can_access ? launchApp(app.id).url : undefined"
+                :draggable="canReorder"
                 :style="{ '--app': accent(app) }"
                 class="group relative flex min-h-[158px] flex-col overflow-hidden rounded-xl border border-border bg-card p-5 no-underline"
-                :class="
+                :class="[
                     app.can_access
                         ? 'transition hover:-translate-y-0.5 hover:border-[var(--app)] hover:shadow-lg'
-                        : 'opacity-80'
-                "
+                        : 'opacity-80',
+                    canReorder ? 'cursor-grab active:cursor-grabbing' : '',
+                    dragging?.list === 'app' && dragging.index === index
+                        ? 'opacity-40'
+                        : '',
+                ]"
+                @dragstart="onDragStart('app', index)"
+                @dragover.prevent
+                @drop.prevent="onDrop('app', index)"
             >
                 <span
                     class="absolute inset-y-0 left-0 w-1"
@@ -195,6 +305,32 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                             : 'var(--border)',
                     }"
                 />
+
+                <button
+                    v-if="app.can_access"
+                    type="button"
+                    :aria-label="app.pinned ? 'Unpin' : 'Pin'"
+                    class="absolute top-3 right-3 rounded-md p-1 transition"
+                    :class="
+                        app.pinned
+                            ? 'text-brand'
+                            : 'text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-foreground'
+                    "
+                    @click.prevent.stop="togglePin('app', app.id, app.pinned)"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        :fill="app.pinned ? 'currentColor' : 'none'"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="size-4"
+                    >
+                        <path d="M12 17v5M9 10.8V4h6v6.8l2 3.2H7l2-3.2Z" />
+                    </svg>
+                </button>
+
                 <span
                     class="mb-3 flex size-11 items-center justify-center rounded-xl text-lg font-extrabold text-white"
                     :style="
@@ -306,12 +442,23 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4"
             >
                 <a
-                    v-for="bookmark in filteredBookmarks"
+                    v-for="(bookmark, index) in filteredBookmarks"
                     :key="bookmark.id"
                     :href="bookmark.url"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="group flex min-h-[92px] items-center gap-3 rounded-xl border border-border bg-card p-4 no-underline transition hover:-translate-y-0.5 hover:border-brand hover:shadow-lg"
+                    :draggable="canReorder"
+                    class="group relative flex min-h-[92px] items-center gap-3 rounded-xl border border-border bg-card p-4 no-underline transition hover:-translate-y-0.5 hover:border-brand hover:shadow-lg"
+                    :class="[
+                        canReorder ? 'cursor-grab active:cursor-grabbing' : '',
+                        dragging?.list === 'bookmark' &&
+                        dragging.index === index
+                            ? 'opacity-40'
+                            : '',
+                    ]"
+                    @dragstart="onDragStart('bookmark', index)"
+                    @dragover.prevent
+                    @drop.prevent="onDrop('bookmark', index)"
                 >
                     <img
                         v-if="showsImage(bookmark)"
@@ -324,7 +471,7 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                         v-else
                         class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-extrabold text-muted-foreground"
                     >
-                        {{ bookmarkMonogram(bookmark) }}
+                        {{ monogram(bookmark.title ?? bookmark.domain) }}
                     </span>
 
                     <span class="min-w-0 flex-1">
@@ -340,17 +487,31 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                         </span>
                     </span>
 
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="size-3.5 shrink-0 text-brand opacity-0 transition group-hover:opacity-100"
+                    <button
+                        type="button"
+                        :aria-label="bookmark.pinned ? 'Unpin' : 'Pin'"
+                        class="shrink-0 rounded-md p-1 transition"
+                        :class="
+                            bookmark.pinned
+                                ? 'text-brand'
+                                : 'text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-foreground'
+                        "
+                        @click.prevent.stop="
+                            togglePin('bookmark', bookmark.id, bookmark.pinned)
+                        "
                     >
-                        <path d="M7 17 17 7M8 7h9v9" />
-                    </svg>
+                        <svg
+                            viewBox="0 0 24 24"
+                            :fill="bookmark.pinned ? 'currentColor' : 'none'"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="size-4"
+                        >
+                            <path d="M12 17v5M9 10.8V4h6v6.8l2 3.2H7l2-3.2Z" />
+                        </svg>
+                    </button>
                 </a>
             </div>
         </template>
