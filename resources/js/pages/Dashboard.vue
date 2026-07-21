@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { dashboard } from '@/routes';
+import { index as bookmarksIndex } from '@/routes/bookmarks';
 
 interface PortalApp {
     id: number;
@@ -14,9 +15,18 @@ interface PortalApp {
     can_access: boolean;
 }
 
+interface PortalBookmark {
+    id: number;
+    url: string;
+    title: string | null;
+    domain: string | null;
+    image: string | null;
+}
+
 const props = defineProps<{
     applications: PortalApp[];
     accessibleCount: number;
+    bookmarks: PortalBookmark[];
 }>();
 
 defineOptions({
@@ -36,18 +46,18 @@ const filter = ref<'all' | 'mine' | 'locked'>('all');
 const filtered = computed(() =>
     props.applications.filter((app) => {
         if (filter.value === 'mine' && !app.can_access) {
-return false;
-}
+            return false;
+        }
 
         if (filter.value === 'locked' && app.can_access) {
-return false;
-}
+            return false;
+        }
 
         const q = search.value.trim().toLowerCase();
 
         if (!q) {
-return true;
-}
+            return true;
+        }
 
         return `${app.name} ${app.description ?? ''} ${app.slug}`
             .toLowerCase()
@@ -57,6 +67,33 @@ return true;
 
 function accent(app: PortalApp): string {
     return app.accent ?? '#B7863A';
+}
+
+const filteredBookmarks = computed(() => {
+    const q = search.value.trim().toLowerCase();
+
+    if (!q) {
+        return props.bookmarks;
+    }
+
+    return props.bookmarks.filter((bookmark) =>
+        `${bookmark.title ?? ''} ${bookmark.domain ?? ''} ${bookmark.url}`
+            .toLowerCase()
+            .includes(q),
+    );
+});
+
+const brokenImages = ref(new Set<number>());
+
+function showsImage(bookmark: PortalBookmark): boolean {
+    return Boolean(bookmark.image) && !brokenImages.value.has(bookmark.id);
+}
+
+function bookmarkMonogram(bookmark: PortalBookmark): string {
+    return (bookmark.title ?? bookmark.domain ?? '?')
+        .trim()
+        .charAt(0)
+        .toUpperCase();
 }
 
 const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
@@ -127,6 +164,12 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 </button>
             </div>
         </div>
+
+        <h2
+            class="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+        >
+            Connected apps
+        </h2>
 
         <div class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4">
             <component
@@ -232,5 +275,84 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 No apps match that search.
             </p>
         </div>
+
+        <template v-if="filteredBookmarks.length">
+            <div class="flex items-center justify-between">
+                <h2
+                    class="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                >
+                    Bookmarks
+                </h2>
+                <Link
+                    :href="bookmarksIndex()"
+                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                >
+                    Manage
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="size-3.5"
+                    >
+                        <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                </Link>
+            </div>
+
+            <div
+                class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4"
+            >
+                <a
+                    v-for="bookmark in filteredBookmarks"
+                    :key="bookmark.id"
+                    :href="bookmark.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="group flex min-h-[92px] items-center gap-3 rounded-xl border border-border bg-card p-4 no-underline transition hover:-translate-y-0.5 hover:border-brand hover:shadow-lg"
+                >
+                    <img
+                        v-if="showsImage(bookmark)"
+                        :src="bookmark.image!"
+                        alt=""
+                        class="size-11 shrink-0 rounded-lg object-cover"
+                        @error="brokenImages.add(bookmark.id)"
+                    />
+                    <span
+                        v-else
+                        class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-extrabold text-muted-foreground"
+                    >
+                        {{ bookmarkMonogram(bookmark) }}
+                    </span>
+
+                    <span class="min-w-0 flex-1">
+                        <span
+                            class="block truncate text-sm font-semibold tracking-tight"
+                        >
+                            {{ bookmark.title }}
+                        </span>
+                        <span
+                            class="block truncate font-mono text-[11px] text-muted-foreground/70"
+                        >
+                            {{ bookmark.domain ?? bookmark.url }}
+                        </span>
+                    </span>
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="size-3.5 shrink-0 text-brand opacity-0 transition group-hover:opacity-100"
+                    >
+                        <path d="M7 17 17 7M8 7h9v9" />
+                    </svg>
+                </a>
+            </div>
+        </template>
     </div>
 </template>
