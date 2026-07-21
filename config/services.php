@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // The Status app's machine-readable endpoint (STAT-6), read to show a live
+    // state dot on each portal card (ID-13). Unset = no dots.
+    'status' => [
+        'url' => env('STATUS_ENDPOINT_URL'),
+        'token' => env('STATUS_ENDPOINT_TOKEN'),
+    ],
+
 ];
