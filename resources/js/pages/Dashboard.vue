@@ -19,6 +19,7 @@ interface PortalApp {
     can_access: boolean;
     pinned: boolean;
     position: number | null;
+    status: 'up' | 'degraded' | 'down' | 'unknown' | null;
 }
 
 interface PortalBookmark {
@@ -113,6 +114,23 @@ const filteredBookmarks = computed(() => {
 
 function accent(app: { accent: string | null }): string {
     return app.accent ?? '#B7863A';
+}
+
+// Live service state (ID-13). 'unknown'/null render no dot.
+const statusDotClass: Record<string, string> = {
+    up: 'bg-emerald-500',
+    degraded: 'bg-amber-500',
+    down: 'bg-red-500',
+};
+
+const statusLabel: Record<string, string> = {
+    up: 'Operational',
+    degraded: 'Degraded',
+    down: 'Down',
+};
+
+function showsStatus(app: PortalApp): boolean {
+    return app.status != null && app.status in statusDotClass;
 }
 
 const brokenImages = ref(new Set<number>());
@@ -394,7 +412,15 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 >
                     {{ app.initials }}
                 </span>
-                <h3 class="text-base font-semibold tracking-tight">
+                <h3
+                    class="flex items-center gap-2 text-base font-semibold tracking-tight"
+                >
+                    <span
+                        v-if="showsStatus(app)"
+                        class="size-2 shrink-0 rounded-full"
+                        :class="statusDotClass[app.status!]"
+                        :title="statusLabel[app.status!]"
+                    />
                     {{ app.name }}
                 </h3>
                 <p class="mt-0.5 text-sm text-muted-foreground">

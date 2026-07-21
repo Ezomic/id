@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\ApplicationUser;
 use App\Models\Bookmark;
+use App\Services\StatusReader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -18,11 +19,12 @@ class DashboardController extends Controller
 
         /** @var Collection<int, ApplicationUser> $pivots */
         $pivots = ApplicationUser::where('user_id', $user->id)->get()->keyBy('application_id');
+        $statuses = app(StatusReader::class)->statesBySlug();
 
         $applications = Application::where('active', true)
             ->orderBy('name')
             ->get()
-            ->map(function (Application $app) use ($pivots) {
+            ->map(function (Application $app) use ($pivots, $statuses) {
                 $pivot = $pivots->get($app->id);
 
                 return [
@@ -36,6 +38,7 @@ class DashboardController extends Controller
                     'can_access' => $pivots->has($app->id),
                     'pinned' => (bool) $pivot?->pinned,
                     'position' => $pivot?->position,
+                    'status' => $statuses[strtolower($app->slug)] ?? null,
                 ];
             });
 
