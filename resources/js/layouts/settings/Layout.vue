@@ -9,6 +9,7 @@ import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import { edit as editSessions } from '@/routes/sessions';
+import { edit as editSignInHistory } from '@/routes/sign-in-history';
 import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
@@ -23,6 +24,10 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Sessions',
         href: editSessions(),
+    },
+    {
+        title: 'Sign-in history',
+        href: editSignInHistory(),
     },
     {
         title: 'Appearance',
