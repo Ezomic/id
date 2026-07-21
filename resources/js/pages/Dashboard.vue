@@ -2,7 +2,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { dashboard } from '@/routes';
-import { index as bookmarksIndex } from '@/routes/bookmarks';
+import {
+    index as bookmarksIndex,
+    store as bookmarksStore,
+} from '@/routes/bookmarks';
 import { launch as launchApp, pin as pinRoute, reorder } from '@/routes/portal';
 
 interface PortalApp {
@@ -132,6 +135,43 @@ function togglePin(type: 'app' | 'bookmark', id: number, pinned: boolean) {
         pinRoute().url,
         { type, id, pinned: !pinned },
         { preserveScroll: true },
+    );
+}
+
+// --- quick-add a bookmark without leaving the portal ---
+
+const addingBookmark = ref(false);
+const newBookmarkUrl = ref('');
+const savingBookmark = ref(false);
+
+function openAddBookmark() {
+    addingBookmark.value = true;
+}
+
+function cancelAddBookmark() {
+    addingBookmark.value = false;
+    newBookmarkUrl.value = '';
+}
+
+function submitBookmark() {
+    const url = newBookmarkUrl.value.trim();
+
+    if (url === '' || savingBookmark.value) {
+        return;
+    }
+
+    savingBookmark.value = true;
+
+    // store() redirects back(), so Inertia reloads the portal props and the
+    // new bookmark appears in place. No navigation away.
+    router.post(
+        bookmarksStore().url,
+        { url },
+        {
+            preserveScroll: true,
+            onSuccess: cancelAddBookmark,
+            onFinish: () => (savingBookmark.value = false),
+        },
     );
 }
 
@@ -418,33 +458,73 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
             </p>
         </div>
 
-        <template v-if="filteredBookmarks.length">
+        <template>
             <div class="flex items-center justify-between">
                 <h2
                     class="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                 >
                     Bookmarks
                 </h2>
-                <Link
-                    :href="bookmarksIndex()"
-                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
-                >
-                    Manage
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="size-3.5"
+                <div class="flex items-center gap-3">
+                    <form
+                        v-if="addingBookmark"
+                        class="flex items-center gap-2"
+                        @submit.prevent="submitBookmark"
                     >
-                        <path d="M5 12h14M13 6l6 6-6 6" />
-                    </svg>
-                </Link>
+                        <input
+                            v-model="newBookmarkUrl"
+                            type="text"
+                            inputmode="url"
+                            autofocus
+                            placeholder="Paste a URL…"
+                            class="h-8 w-56 rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-brand"
+                            @keydown.esc="cancelAddBookmark"
+                        />
+                        <button
+                            type="submit"
+                            :disabled="savingBookmark || !newBookmarkUrl.trim()"
+                            class="inline-flex h-8 items-center rounded-lg bg-brand px-3 text-xs font-semibold text-white transition disabled:opacity-50"
+                        >
+                            {{ savingBookmark ? 'Saving…' : 'Save' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                            @click="cancelAddBookmark"
+                        >
+                            Cancel
+                        </button>
+                    </form>
+                    <button
+                        v-else
+                        type="button"
+                        class="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                        @click="openAddBookmark"
+                    >
+                        + Add
+                    </button>
+                    <Link
+                        :href="bookmarksIndex()"
+                        class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                    >
+                        Manage
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="size-3.5"
+                        >
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+                    </Link>
+                </div>
             </div>
 
             <div
+                v-if="filteredBookmarks.length"
                 class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4"
             >
                 <a
