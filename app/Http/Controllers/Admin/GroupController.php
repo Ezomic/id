@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccessAudit;
 use App\Models\Application;
 use App\Models\Group;
 use App\Models\User;
@@ -61,8 +62,26 @@ class GroupController extends Controller
             $group->update(['name' => $data['name']]);
         }
 
-        $group->users()->sync($data['users'] ?? []);
-        $group->applications()->sync($data['applications'] ?? []);
+        $beforeUsers = $group->users()->pluck('users.id')->all();
+        $beforeApps = $group->applications()->pluck('applications.id')->all();
+        $afterUsers = array_map('intval', $data['users'] ?? []);
+        $afterApps = array_map('intval', $data['applications'] ?? []);
+
+        $group->users()->sync($afterUsers);
+        $group->applications()->sync($afterApps);
+
+        foreach (array_diff($afterUsers, $beforeUsers) as $userId) {
+            AccessAudit::log('group_member_add', ['group_id' => $group->id, 'subject_user_id' => $userId]);
+        }
+        foreach (array_diff($beforeUsers, $afterUsers) as $userId) {
+            AccessAudit::log('group_member_remove', ['group_id' => $group->id, 'subject_user_id' => $userId]);
+        }
+        foreach (array_diff($afterApps, $beforeApps) as $applicationId) {
+            AccessAudit::log('group_app_grant', ['group_id' => $group->id, 'application_id' => $applicationId]);
+        }
+        foreach (array_diff($beforeApps, $afterApps) as $applicationId) {
+            AccessAudit::log('group_app_revoke', ['group_id' => $group->id, 'application_id' => $applicationId]);
+        }
 
         return back()->with('status', 'Group updated.');
     }

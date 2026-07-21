@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
+use App\Http\Controllers\Admin\AccessAuditController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\UserController;
@@ -68,6 +69,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('groups', [GroupController::class, 'store'])->name('groups.store');
     Route::put('groups/{group}', [GroupController::class, 'update'])->name('groups.update');
     Route::delete('groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
+
+    Route::get('access-audit', [AccessAuditController::class, 'index'])->name('access-audit.index');
 });
 
 require __DIR__.'/settings.php';

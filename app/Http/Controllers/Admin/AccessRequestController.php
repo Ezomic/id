@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccessAudit;
 use App\Models\AccessRequest;
 use App\Notifications\AccessRequestDecided;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,10 @@ class AccessRequestController extends Controller
 
         $accessRequest->user->applications()->syncWithoutDetaching([$accessRequest->application_id]);
         $this->decide($accessRequest, 'approved', $request->user()->id);
+        AccessAudit::log('grant', [
+            'subject_user_id' => $accessRequest->user_id,
+            'application_id' => $accessRequest->application_id,
+        ]);
         $accessRequest->user->notify(new AccessRequestDecided($accessRequest->application->name, true));
 
         return back()->with('status', 'Access granted.');
