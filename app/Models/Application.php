@@ -36,6 +36,12 @@ class Application extends Model
         return $this->belongsToMany(User::class)->withTimestamps();
     }
 
+    /** @return BelongsToMany<Group, $this> */
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class);
+    }
+
     /**
      * The OAuth client that backs this application.
      *

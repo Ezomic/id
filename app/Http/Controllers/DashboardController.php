@@ -20,6 +20,7 @@ class DashboardController extends Controller
 
         /** @var Collection<int, ApplicationUser> $pivots */
         $pivots = ApplicationUser::where('user_id', $user->id)->get()->keyBy('application_id');
+        $accessibleIds = $user->accessibleApplicationIds();
         $statuses = app(StatusReader::class)->statesBySlug();
         $pendingRequestIds = AccessRequest::where('user_id', $user->id)
             ->pending()
@@ -29,7 +30,7 @@ class DashboardController extends Controller
         $applications = Application::where('active', true)
             ->orderBy('name')
             ->get()
-            ->map(function (Application $app) use ($pivots, $statuses, $pendingRequestIds) {
+            ->map(function (Application $app) use ($pivots, $accessibleIds, $statuses, $pendingRequestIds) {
                 $pivot = $pivots->get($app->id);
 
                 return [
@@ -40,7 +41,7 @@ class DashboardController extends Controller
                     'initials' => $app->glyph(),
                     'accent' => $app->accent,
                     'launch_url' => $app->launch_url,
-                    'can_access' => $pivots->has($app->id),
+                    'can_access' => $accessibleIds->contains($app->id),
                     'pinned' => (bool) $pivot?->pinned,
                     'position' => $pivot?->position,
                     'status' => $statuses[strtolower($app->slug)] ?? null,
@@ -71,7 +72,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'applications' => $applications->sortBy($byPosition)->sortBy($pinFirst)->values(),
-            'accessibleCount' => $pivots->count(),
+            'accessibleCount' => $accessibleIds->count(),
             'bookmarks' => $bookmarks->sortBy($byPosition)->sortBy($pinFirst)->values(),
             'recentApps' => $this->recentApps($pivots),
         ]);
