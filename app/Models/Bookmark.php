@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $title
  * @property string|null $domain
  * @property string|null $image
+ * @property string|null $favicon
  * @property string|null $note
  * @property list<string>|null $tags
  * @property bool $pinned
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['url', 'title', 'domain', 'image', 'note', 'tags', 'pinned', 'position', 'read_at', 'archived_at'])]
+#[Fillable(['url', 'title', 'domain', 'image', 'favicon', 'note', 'tags', 'pinned', 'position', 'read_at', 'archived_at'])]
 class Bookmark extends Model
 {
     /** @use HasFactory<BookmarkFactory> */
