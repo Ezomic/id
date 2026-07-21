@@ -25,6 +25,7 @@ class SaveBookmark
             'url' => $url,
             'title' => $meta['title'] ?? $domain,
             'image' => $meta['image'],
+            'favicon' => $meta['favicon'],
             'domain' => $domain,
             'note' => $data['note'] ?? null,
             'tags' => $data['tags'] ?? [],

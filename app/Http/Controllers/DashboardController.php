@@ -49,6 +49,7 @@ class DashboardController extends Controller
                 'title' => $bookmark->title ?? $bookmark->domain,
                 'domain' => $bookmark->domain,
                 'image' => $bookmark->image,
+                'favicon' => $bookmark->favicon,
                 'pinned' => $bookmark->pinned,
                 'position' => $bookmark->position,
             ]);

@@ -26,6 +26,7 @@ class BookmarkController extends Controller
                 'title' => $bookmark->title ?? $bookmark->domain,
                 'domain' => $bookmark->domain,
                 'image' => $bookmark->image,
+                'favicon' => $bookmark->favicon,
                 'note' => $bookmark->note,
                 'tags' => $bookmark->tags ?? [],
                 'read' => $bookmark->isRead(),

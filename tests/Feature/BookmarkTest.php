@@ -75,7 +75,38 @@ it('still saves the link when the page cannot be fetched', function () {
 
     expect($user->bookmarks()->sole())
         ->title->toBe('down.example.com')
-        ->image->toBeNull();
+        ->image->toBeNull()
+        ->favicon->toBeNull();
+});
+
+it('resolves the favicon from a link rel=icon tag', function () {
+    Http::fake([
+        'example.com/*' => Http::response(
+            '<html><head><title>x</title>'
+            .'<link rel="icon" href="/assets/favicon.png">'
+            .'</head></html>'
+        ),
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('bookmarks.store'), ['url' => 'example.com/post'])
+        ->assertSessionHasNoErrors();
+
+    expect($user->bookmarks()->sole()->favicon)->toBe('https://example.com/assets/favicon.png');
+});
+
+it('falls back to /favicon.ico when the page has no icon link', function () {
+    Http::fake(['example.org/*' => Http::response('<html><head><title>x</title></head></html>')]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('bookmarks.store'), ['url' => 'https://www.example.org/x'])
+        ->assertSessionHasNoErrors();
+
+    expect($user->bookmarks()->sole()->favicon)->toBe('https://www.example.org/favicon.ico');
 });
 
 it('requires a url', function () {

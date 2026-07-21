@@ -13,7 +13,7 @@ class LinkMetadata
      * Read the title and preview image off a page. Never throws: a link that
      * cannot be reached is still worth saving, just without its metadata.
      *
-     * @return array{title: string|null, image: string|null}
+     * @return array{title: string|null, image: string|null, favicon: string|null}
      */
     public function fetch(string $url): array
     {
@@ -23,7 +23,7 @@ class LinkMetadata
                 ->get($url);
 
             if (! $response->successful()) {
-                return ['title' => null, 'image' => null];
+                return ['title' => null, 'image' => null, 'favicon' => null];
             }
 
             $html = $response->body();
@@ -31,10 +31,43 @@ class LinkMetadata
             return [
                 'title' => $this->title($html),
                 'image' => $this->absolute($this->image($html), $url),
+                'favicon' => $this->favicon($html, $url),
             ];
         } catch (Throwable) {
-            return ['title' => null, 'image' => null];
+            return ['title' => null, 'image' => null, 'favicon' => null];
         }
+    }
+
+    /**
+     * Resolve a favicon from the page's <link rel="...icon...">, falling back
+     * to the well-known /favicon.ico on the same origin (the page responded,
+     * so the origin is reachable). Returns null only when the origin can't be
+     * parsed.
+     */
+    private function favicon(string $html, string $base): ?string
+    {
+        $patterns = [
+            '/<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]+href=["\']([^"\']+)["\']/i',
+            '/<link[^>]+href=["\']([^"\']+)["\'][^>]+rel=["\'][^"\']*icon[^"\']*["\']/i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $html, $matches) === 1) {
+                $resolved = $this->absolute($this->clean($matches[1]), $base);
+
+                if ($resolved !== null) {
+                    return $resolved;
+                }
+            }
+        }
+
+        $parts = parse_url($base);
+
+        if (isset($parts['scheme'], $parts['host'])) {
+            return $parts['scheme'].'://'.$parts['host'].'/favicon.ico';
+        }
+
+        return null;
     }
 
     private function title(string $html): ?string

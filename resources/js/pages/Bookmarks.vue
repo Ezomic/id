@@ -15,6 +15,7 @@ interface Bookmark {
     title: string | null;
     domain: string | null;
     image: string | null;
+    favicon: string | null;
     note: string | null;
     tags: string[];
     read: boolean;
@@ -160,9 +161,14 @@ function monogram(bookmark: Bookmark): string {
 
 /* A preview image can rot after it is saved; fall back to the monogram. */
 const brokenImages = ref(new Set<number>());
+const brokenFavicons = ref(new Set<number>());
 
 function showsImage(bookmark: Bookmark): boolean {
     return Boolean(bookmark.image) && !brokenImages.value.has(bookmark.id);
+}
+
+function showsFavicon(bookmark: Bookmark): boolean {
+    return Boolean(bookmark.favicon) && !brokenFavicons.value.has(bookmark.id);
 }
 
 const filters: { key: 'unread' | 'all' | 'archived'; label: string }[] = [
@@ -327,6 +333,14 @@ const filters: { key: 'unread' | 'all' | 'archived'; label: string }[] = [
                         class="size-full object-cover"
                         loading="lazy"
                         @error="brokenImages.add(bookmark.id)"
+                    />
+                    <img
+                        v-else-if="showsFavicon(bookmark)"
+                        :src="bookmark.favicon!"
+                        alt=""
+                        class="size-12 rounded-xl bg-white/10 object-contain p-2.5 backdrop-blur"
+                        loading="lazy"
+                        @error="brokenFavicons.add(bookmark.id)"
                     />
                     <span
                         v-else

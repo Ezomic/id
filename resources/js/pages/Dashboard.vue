@@ -24,6 +24,7 @@ interface PortalBookmark {
     title: string | null;
     domain: string | null;
     image: string | null;
+    favicon: string | null;
     pinned: boolean;
     position: number | null;
 }
@@ -112,9 +113,14 @@ function accent(app: { accent: string | null }): string {
 }
 
 const brokenImages = ref(new Set<number>());
+const brokenFavicons = ref(new Set<number>());
 
 function showsImage(bookmark: PortalBookmark): boolean {
     return Boolean(bookmark.image) && !brokenImages.value.has(bookmark.id);
+}
+
+function showsFavicon(bookmark: PortalBookmark): boolean {
+    return Boolean(bookmark.favicon) && !brokenFavicons.value.has(bookmark.id);
 }
 
 function monogram(value: string | null): string {
@@ -466,6 +472,13 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                         alt=""
                         class="size-11 shrink-0 rounded-lg object-cover"
                         @error="brokenImages.add(bookmark.id)"
+                    />
+                    <img
+                        v-else-if="showsFavicon(bookmark)"
+                        :src="bookmark.favicon!"
+                        alt=""
+                        class="size-11 shrink-0 rounded-lg bg-muted object-contain p-2.5"
+                        @error="brokenFavicons.add(bookmark.id)"
                     />
                     <span
                         v-else
