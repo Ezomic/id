@@ -5,6 +5,7 @@ import {
     Boxes,
     KeyRound,
     LayoutGrid,
+    ScrollText,
     Users,
     UsersRound,
 } from '@lucide/vue';
@@ -22,6 +23,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as adminAccessAudit } from '@/routes/admin/access-audit';
 import { index as adminAccessRequests } from '@/routes/admin/access-requests';
 import { index as adminApplications } from '@/routes/admin/applications';
 import { index as adminGroups } from '@/routes/admin/groups';
@@ -64,6 +66,11 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: 'Access requests',
                   href: adminAccessRequests(),
                   icon: KeyRound,
+              },
+              {
+                  title: 'Audit log',
+                  href: adminAccessAudit(),
+                  icon: ScrollText,
               },
           ]
         : []),

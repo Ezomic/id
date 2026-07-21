@@ -7,6 +7,7 @@ use App\Actions\Admin\SetApplicationAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateAccessRequest;
+use App\Models\AccessAudit;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -41,7 +42,18 @@ class UserController extends Controller
 
     public function updateAccess(UpdateAccessRequest $request, User $user, SetApplicationAccess $setAccess): RedirectResponse
     {
-        $setAccess->handle($user, $request->validated()['applications'] ?? []);
+        $before = $user->applications()->pluck('applications.id')->all();
+        $after = array_map('intval', $request->validated()['applications'] ?? []);
+
+        $setAccess->handle($user, $after);
+
+        foreach (array_diff($after, $before) as $applicationId) {
+            AccessAudit::log('grant', ['subject_user_id' => $user->id, 'application_id' => $applicationId]);
+        }
+
+        foreach (array_diff($before, $after) as $applicationId) {
+            AccessAudit::log('revoke', ['subject_user_id' => $user->id, 'application_id' => $applicationId]);
+        }
 
         return back()->with('status', 'Access updated.');
     }
