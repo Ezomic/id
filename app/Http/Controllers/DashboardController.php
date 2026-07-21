@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccessRequest;
 use App\Models\Application;
 use App\Models\ApplicationUser;
 use App\Models\Bookmark;
@@ -20,11 +21,15 @@ class DashboardController extends Controller
         /** @var Collection<int, ApplicationUser> $pivots */
         $pivots = ApplicationUser::where('user_id', $user->id)->get()->keyBy('application_id');
         $statuses = app(StatusReader::class)->statesBySlug();
+        $pendingRequestIds = AccessRequest::where('user_id', $user->id)
+            ->pending()
+            ->pluck('application_id')
+            ->all();
 
         $applications = Application::where('active', true)
             ->orderBy('name')
             ->get()
-            ->map(function (Application $app) use ($pivots, $statuses) {
+            ->map(function (Application $app) use ($pivots, $statuses, $pendingRequestIds) {
                 $pivot = $pivots->get($app->id);
 
                 return [
@@ -39,6 +44,7 @@ class DashboardController extends Controller
                     'pinned' => (bool) $pivot?->pinned,
                     'position' => $pivot?->position,
                     'status' => $statuses[strtolower($app->slug)] ?? null,
+                    'requested' => in_array($app->id, $pendingRequestIds, true),
                 ];
             });
 

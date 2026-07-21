@@ -6,6 +6,7 @@ import {
     index as bookmarksIndex,
     store as bookmarksStore,
 } from '@/routes/bookmarks';
+import { store as requestAccessRoute } from '@/routes/access-requests';
 import { launch as launchApp, pin as pinRoute, reorder } from '@/routes/portal';
 
 interface PortalApp {
@@ -20,6 +21,7 @@ interface PortalApp {
     pinned: boolean;
     position: number | null;
     status: 'up' | 'degraded' | 'down' | 'unknown' | null;
+    requested: boolean;
 }
 
 interface PortalBookmark {
@@ -114,6 +116,14 @@ const filteredBookmarks = computed(() => {
 
 function accent(app: { accent: string | null }): string {
     return app.accent ?? '#B7863A';
+}
+
+function requestAccess(app: PortalApp) {
+    router.post(
+        requestAccessRoute().url,
+        { application_id: app.id },
+        { preserveScroll: true },
+    );
 }
 
 // Live service state (ID-13). 'unknown'/null render no dot.
@@ -456,8 +466,16 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                         </span>
                     </template>
                     <span
-                        v-else
+                        v-else-if="app.requested"
                         class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                    >
+                        Access requested
+                    </span>
+                    <button
+                        v-else
+                        type="button"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-brand hover:text-foreground"
+                        @click.prevent.stop="requestAccess(app)"
                     >
                         <svg
                             viewBox="0 0 24 24"
@@ -471,8 +489,8 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                             <rect x="4" y="11" width="16" height="9" rx="2" />
                             <path d="M8 11V8a4 4 0 0 1 8 0v3" />
                         </svg>
-                        No access
-                    </span>
+                        Request access
+                    </button>
                 </div>
             </component>
 
