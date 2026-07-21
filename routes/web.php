@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AccessRequestController;
+use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
@@ -44,6 +46,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('bookmarks', [BookmarkController::class, 'store'])->name('bookmarks.store');
     Route::put('bookmarks/{bookmark}', [BookmarkController::class, 'update'])->name('bookmarks.update');
     Route::delete('bookmarks/{bookmark}', [BookmarkController::class, 'destroy'])->name('bookmarks.destroy');
+
+    Route::post('access-requests', [AccessRequestController::class, 'store'])->name('access-requests.store');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -54,6 +58,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
     Route::put('applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
+
+    Route::get('access-requests', [AdminAccessRequestController::class, 'index'])->name('access-requests.index');
+    Route::post('access-requests/{accessRequest}/approve', [AdminAccessRequestController::class, 'approve'])->name('access-requests.approve');
+    Route::post('access-requests/{accessRequest}/deny', [AdminAccessRequestController::class, 'deny'])->name('access-requests.deny');
 });
 
 require __DIR__.'/settings.php';

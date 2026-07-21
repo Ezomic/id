@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bookmark, Boxes, LayoutGrid, Users } from '@lucide/vue';
+import { Bookmark, Boxes, KeyRound, LayoutGrid, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as adminAccessRequests } from '@/routes/admin/access-requests';
 import { index as adminApplications } from '@/routes/admin/applications';
 import { index as adminUsers } from '@/routes/admin/users';
 import { index as bookmarks } from '@/routes/bookmarks';
@@ -45,6 +46,11 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: 'Users',
                   href: adminUsers(),
                   icon: Users,
+              },
+              {
+                  title: 'Access requests',
+                  href: adminAccessRequests(),
+                  icon: KeyRound,
               },
           ]
         : []),
