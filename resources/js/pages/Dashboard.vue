@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { dashboard } from '@/routes';
+import { store as requestAccessRoute } from '@/routes/access-requests';
 import {
     index as bookmarksIndex,
     store as bookmarksStore,
 } from '@/routes/bookmarks';
-import { store as requestAccessRoute } from '@/routes/access-requests';
 import { launch as launchApp, pin as pinRoute, reorder } from '@/routes/portal';
 
 interface PortalApp {
@@ -286,14 +287,12 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                     :href="launchApp(app.id).url"
                     class="group flex items-center gap-2.5 rounded-xl border border-border bg-card py-2 pr-4 pl-2 no-underline transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                    <span
-                        class="flex size-8 items-center justify-center rounded-lg text-sm font-extrabold text-white"
-                        :style="{
-                            background: `linear-gradient(150deg, color-mix(in srgb, ${accent(app)} 82%, white), ${accent(app)})`,
-                        }"
-                    >
-                        {{ app.initials }}
-                    </span>
+                    <AppIcon
+                        :launch-url="app.launch_url"
+                        :initials="app.initials"
+                        :accent="app.accent"
+                        size="sm"
+                    />
                     <span class="text-sm font-semibold tracking-tight">{{
                         app.name
                     }}</span>
@@ -405,23 +404,14 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                     </svg>
                 </button>
 
-                <span
-                    class="mb-3 flex size-11 items-center justify-center rounded-xl text-lg font-extrabold text-white"
-                    :style="
-                        app.can_access
-                            ? {
-                                  background: `linear-gradient(150deg, color-mix(in srgb, ${accent(app)} 82%, white), ${accent(app)})`,
-                              }
-                            : {}
-                    "
-                    :class="
-                        app.can_access
-                            ? ''
-                            : 'bg-muted text-muted-foreground grayscale'
-                    "
-                >
-                    {{ app.initials }}
-                </span>
+                <AppIcon
+                    :launch-url="app.launch_url"
+                    :initials="app.initials"
+                    :accent="app.accent"
+                    :disabled="!app.can_access"
+                    size="md"
+                    class="mb-3"
+                />
                 <h3
                     class="flex items-center gap-2 text-base font-semibold tracking-tight"
                 >
