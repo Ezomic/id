@@ -56,6 +56,14 @@ function onError(): void {
     exhausted.value = true;
 }
 
+// Some apps serve an empty 200 for favicon.ico, which fires `load`, not
+// `error`. Treat a zero-dimension image as a miss so the fallback still kicks in.
+function onLoad(event: Event): void {
+    if ((event.target as HTMLImageElement).naturalWidth === 0) {
+        onError();
+    }
+}
+
 const tile = computed(() =>
     props.size === 'sm' ? 'size-8 rounded-lg' : 'size-11 rounded-xl',
 );
@@ -89,6 +97,7 @@ const fallbackStyle = computed(() =>
             alt=""
             class="size-full object-contain p-1.5"
             @error="onError"
+            @load="onLoad"
         />
         <template v-else>{{ initials }}</template>
     </span>
