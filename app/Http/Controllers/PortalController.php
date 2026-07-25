@@ -26,7 +26,9 @@ class PortalController extends Controller
             'last_launched_at' => Carbon::now(),
         ]);
 
-        return redirect()->away($application->launch_url);
+        // Prefer the app's SSO entry so the user arrives signed in; fall back
+        // to the plain launch URL for apps that don't use id-client SSO.
+        return redirect()->away($application->ssoLaunchUrl() ?? $application->launch_url);
     }
 
     public function reorder(Request $request): RedirectResponse
