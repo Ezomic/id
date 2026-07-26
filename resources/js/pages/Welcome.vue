@@ -20,7 +20,11 @@ const props = defineProps<{
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
 
-const hubApps = computed(() => props.applications.slice(0, 8));
+// The hub constellation shows only the main apps; categorized apps (e.g. games)
+// stay out of it but still appear in their own strip row below.
+const hubApps = computed(() =>
+    props.applications.filter((app) => !app.category).slice(0, 8),
+);
 
 // The strip groups apps by category: uncategorized under "Connected platforms",
 // each category (e.g. Games) as its own labelled row.

@@ -15,10 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return Inertia\Inertia::render('Welcome', [
-        // The public landing shows only the main apps; categorized apps (e.g.
-        // games) stay out of it and live in the signed-in portal instead.
         'applications' => Application::where('active', true)
-            ->whereNull('category')
             ->orderBy('name')
             ->get()
             ->map(fn (Application $app) => [
