@@ -19,6 +19,7 @@ class UpdateApplicationRequest extends FormRequest
             'initials' => ['nullable', 'string', 'max:4'],
             'accent' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'launch_url' => ['nullable', 'url', 'max:255'],
+            'category' => ['nullable', 'string', 'max:50'],
             'redirect_uri' => ['required', 'url', 'max:255'],
             'active' => ['boolean'],
             'users' => ['array'],

@@ -2,8 +2,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import AppIcon from '@/components/AppIcon.vue';
+import PortalAppCard from '@/components/PortalAppCard.vue';
 import { dashboard } from '@/routes';
-import { store as requestAccessRoute } from '@/routes/access-requests';
 import {
     index as bookmarksIndex,
     store as bookmarksStore,
@@ -18,6 +18,7 @@ interface PortalApp {
     initials: string;
     accent: string | null;
     launch_url: string | null;
+    category: string | null;
     can_access: boolean;
     pinned: boolean;
     position: number | null;
@@ -63,12 +64,16 @@ const firstName = computed(
 );
 
 // Local copies so a drag can reorder optimistically before the server confirms.
-const localApps = ref<PortalApp[]>([...props.applications]);
+// Only uncategorized apps live in the reorderable main grid; categorized apps
+// render in their own sections below.
+const localApps = ref<PortalApp[]>(
+    props.applications.filter((app) => !app.category),
+);
 const localBookmarks = ref<PortalBookmark[]>([...props.bookmarks]);
 
 watch(
     () => props.applications,
-    (value) => (localApps.value = [...value]),
+    (value) => (localApps.value = value.filter((app) => !app.category)),
 );
 watch(
     () => props.bookmarks,
@@ -83,25 +88,45 @@ const query = computed(() => search.value.trim().toLowerCase());
 // Reordering only makes sense against the full, unfiltered list.
 const canReorder = computed(() => query.value === '' && filter.value === 'all');
 
-const filtered = computed(() =>
-    localApps.value.filter((app) => {
-        if (filter.value === 'mine' && !app.can_access) {
-            return false;
+function matches(app: PortalApp): boolean {
+    if (filter.value === 'mine' && !app.can_access) {
+        return false;
+    }
+
+    if (filter.value === 'locked' && app.can_access) {
+        return false;
+    }
+
+    if (!query.value) {
+        return true;
+    }
+
+    return `${app.name} ${app.description ?? ''} ${app.slug}`
+        .toLowerCase()
+        .includes(query.value);
+}
+
+const filtered = computed(() => localApps.value.filter(matches));
+
+// Categorized apps grouped into their own sections (e.g. Games), in name order.
+const categoryGroups = computed(() => {
+    const groups = new Map<string, PortalApp[]>();
+
+    for (const app of props.applications) {
+        if (!app.category || !matches(app)) {
+            continue;
         }
 
-        if (filter.value === 'locked' && app.can_access) {
-            return false;
-        }
+        (
+            groups.get(app.category) ??
+            groups.set(app.category, []).get(app.category)!
+        ).push(app);
+    }
 
-        if (!query.value) {
-            return true;
-        }
-
-        return `${app.name} ${app.description ?? ''} ${app.slug}`
-            .toLowerCase()
-            .includes(query.value);
-    }),
-);
+    return [...groups.entries()]
+        .map(([category, apps]) => ({ category, apps }))
+        .sort((a, b) => a.category.localeCompare(b.category));
+});
 
 const filteredBookmarks = computed(() => {
     if (!query.value) {
@@ -114,35 +139,6 @@ const filteredBookmarks = computed(() => {
             .includes(query.value),
     );
 });
-
-function accent(app: { accent: string | null }): string {
-    return app.accent ?? '#B7863A';
-}
-
-function requestAccess(app: PortalApp) {
-    router.post(
-        requestAccessRoute().url,
-        { application_id: app.id },
-        { preserveScroll: true },
-    );
-}
-
-// Live service state (ID-13). 'unknown'/null render no dot.
-const statusDotClass: Record<string, string> = {
-    up: 'bg-emerald-500',
-    degraded: 'bg-amber-500',
-    down: 'bg-red-500',
-};
-
-const statusLabel: Record<string, string> = {
-    up: 'Operational',
-    degraded: 'Degraded',
-    down: 'Down',
-};
-
-function showsStatus(app: PortalApp): boolean {
-    return app.status != null && app.status in statusDotClass;
-}
 
 const brokenImages = ref(new Set<number>());
 const brokenFavicons = ref(new Set<number>());
@@ -349,18 +345,12 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
         </h2>
 
         <div class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4">
-            <component
-                :is="app.can_access ? 'a' : 'div'"
+            <PortalAppCard
                 v-for="(app, index) in filtered"
                 :key="app.id"
-                :href="app.can_access ? launchApp(app.id).url : undefined"
+                :app="app"
                 :draggable="canReorder"
-                :style="{ '--app': accent(app) }"
-                class="group relative flex min-h-[158px] flex-col overflow-hidden rounded-xl border border-border bg-card p-5 no-underline"
                 :class="[
-                    app.can_access
-                        ? 'transition hover:-translate-y-0.5 hover:border-[var(--app)] hover:shadow-lg'
-                        : 'opacity-80',
                     canReorder ? 'cursor-grab active:cursor-grabbing' : '',
                     dragging?.list === 'app' && dragging.index === index
                         ? 'opacity-40'
@@ -369,128 +359,32 @@ const filters: { key: 'all' | 'mine' | 'locked'; label: string }[] = [
                 @dragstart="onDragStart('app', index)"
                 @dragover.prevent
                 @drop.prevent="onDrop('app', index)"
-            >
-                <span
-                    class="absolute inset-y-0 left-0 w-1"
-                    :style="{
-                        background: app.can_access
-                            ? accent(app)
-                            : 'var(--border)',
-                    }"
-                />
-
-                <button
-                    v-if="app.can_access"
-                    type="button"
-                    :aria-label="app.pinned ? 'Unpin' : 'Pin'"
-                    class="absolute top-3 right-3 rounded-md p-1 transition"
-                    :class="
-                        app.pinned
-                            ? 'text-brand'
-                            : 'text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-foreground'
-                    "
-                    @click.prevent.stop="togglePin('app', app.id, app.pinned)"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        :fill="app.pinned ? 'currentColor' : 'none'"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="size-4"
-                    >
-                        <path d="M12 17v5M9 10.8V4h6v6.8l2 3.2H7l2-3.2Z" />
-                    </svg>
-                </button>
-
-                <AppIcon
-                    :launch-url="app.launch_url"
-                    :initials="app.initials"
-                    :accent="app.accent"
-                    :disabled="!app.can_access"
-                    size="md"
-                    class="mb-3"
-                />
-                <h3
-                    class="flex items-center gap-2 text-base font-semibold tracking-tight"
-                >
-                    <span
-                        v-if="showsStatus(app)"
-                        class="size-2 shrink-0 rounded-full"
-                        :class="statusDotClass[app.status!]"
-                        :title="statusLabel[app.status!]"
-                    />
-                    {{ app.name }}
-                </h3>
-                <p class="mt-0.5 text-sm text-muted-foreground">
-                    {{ app.description }}
-                </p>
-
-                <div class="mt-auto flex items-center justify-between pt-4">
-                    <template v-if="app.can_access">
-                        <span
-                            class="font-mono text-[11px] text-muted-foreground/70"
-                        >
-                            {{
-                                app.launch_url?.replace(/^https?:\/\//, '') ??
-                                app.slug
-                            }}
-                        </span>
-                        <span
-                            class="inline-flex items-center gap-1.5 text-xs font-semibold opacity-0 transition group-hover:opacity-100"
-                            :style="{ color: accent(app) }"
-                        >
-                            Launch
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2.2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                class="size-3.5"
-                            >
-                                <path d="M7 17 17 7M8 7h9v9" />
-                            </svg>
-                        </span>
-                    </template>
-                    <span
-                        v-else-if="app.requested"
-                        class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                    >
-                        Access requested
-                    </span>
-                    <button
-                        v-else
-                        type="button"
-                        class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-brand hover:text-foreground"
-                        @click.prevent.stop="requestAccess(app)"
-                    >
-                        <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="size-3"
-                        >
-                            <rect x="4" y="11" width="16" height="9" rx="2" />
-                            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                        </svg>
-                        Request access
-                    </button>
-                </div>
-            </component>
+            />
 
             <p
-                v-if="!filtered.length"
+                v-if="!filtered.length && !categoryGroups.length"
                 class="col-span-full py-10 text-center text-sm text-muted-foreground"
             >
                 No apps match that search.
             </p>
         </div>
+
+        <template v-for="group in categoryGroups" :key="group.category">
+            <h2
+                class="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+            >
+                {{ group.category }}
+            </h2>
+            <div
+                class="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-4"
+            >
+                <PortalAppCard
+                    v-for="app in group.apps"
+                    :key="app.id"
+                    :app="app"
+                />
+            </div>
+        </template>
 
         <template>
             <div class="flex items-center justify-between">

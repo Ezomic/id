@@ -10,6 +10,7 @@ interface LandingApp {
     initials: string;
     accent: string | null;
     launch_url: string | null;
+    category: string | null;
 }
 
 const props = defineProps<{
@@ -20,6 +21,39 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
 
 const hubApps = computed(() => props.applications.slice(0, 8));
+
+// The strip groups apps by category: uncategorized under "Connected platforms",
+// each category (e.g. Games) as its own labelled row.
+const platformGroups = computed(() => {
+    const uncategorized = props.applications.filter((app) => !app.category);
+
+    const byCategory = new Map<string, LandingApp[]>();
+
+    for (const app of props.applications) {
+        if (!app.category) {
+            continue;
+        }
+
+        (
+            byCategory.get(app.category) ??
+            byCategory.set(app.category, []).get(app.category)!
+        ).push(app);
+    }
+
+    const groups: { label: string; apps: LandingApp[] }[] = [];
+
+    if (uncategorized.length) {
+        groups.push({ label: 'Connected platforms', apps: uncategorized });
+    }
+
+    for (const [category, apps] of [...byCategory.entries()].sort((a, b) =>
+        a[0].localeCompare(b[0]),
+    )) {
+        groups.push({ label: category, apps });
+    }
+
+    return groups;
+});
 
 function nodeStyle(index: number, total: number) {
     const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
@@ -234,26 +268,30 @@ function linePoint(index: number, total: number) {
 
         <section class="border-t border-border" v-if="applications.length">
             <div
-                class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-7 gap-y-3 px-6 py-6"
+                class="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6"
+                v-for="group in platformGroups"
+                :key="group.label"
             >
-                <span
-                    class="font-mono text-[11px] tracking-[0.14em] text-muted-foreground/70 uppercase"
-                >
-                    Connected platforms
-                </span>
-                <span
-                    v-for="app in applications"
-                    :key="app.slug"
-                    class="inline-flex items-center gap-2 text-sm font-semibold text-foreground/80"
-                >
-                    <AppIcon
-                        :launch-url="app.launch_url"
-                        :initials="app.initials"
-                        :accent="app.accent"
-                        size="xs"
-                    />
-                    {{ app.name }}
-                </span>
+                <div class="flex flex-wrap items-center gap-x-7 gap-y-3">
+                    <span
+                        class="font-mono text-[11px] tracking-[0.14em] text-muted-foreground/70 uppercase"
+                    >
+                        {{ group.label }}
+                    </span>
+                    <span
+                        v-for="app in group.apps"
+                        :key="app.slug"
+                        class="inline-flex items-center gap-2 text-sm font-semibold text-foreground/80"
+                    >
+                        <AppIcon
+                            :launch-url="app.launch_url"
+                            :initials="app.initials"
+                            :accent="app.accent"
+                            size="xs"
+                        />
+                        {{ app.name }}
+                    </span>
+                </div>
             </div>
         </section>
 
