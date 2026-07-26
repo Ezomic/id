@@ -23,6 +23,7 @@ Route::get('/', function () {
                 'slug' => $app->slug,
                 'initials' => $app->glyph(),
                 'accent' => $app->accent,
+                'launch_url' => $app->launch_url,
             ]),
     ]);
 })->name('home');
