@@ -41,6 +41,7 @@ class DashboardController extends Controller
                     'initials' => $app->glyph(),
                     'accent' => $app->accent,
                     'launch_url' => $app->launch_url,
+                    'category' => $app->category,
                     'can_access' => $accessibleIds->contains($app->id),
                     'pinned' => (bool) $pivot?->pinned,
                     'position' => $pivot?->position,

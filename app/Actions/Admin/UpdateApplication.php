@@ -20,6 +20,7 @@ class UpdateApplication
             'initials' => $data['initials'] ?? null,
             'accent' => $data['accent'] ?? null,
             'launch_url' => $data['launch_url'] ?? null,
+            'category' => $data['category'] ?? null,
             'active' => $data['active'] ?? false,
         ])->save();
 

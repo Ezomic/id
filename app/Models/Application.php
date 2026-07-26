@@ -17,13 +17,14 @@ use Illuminate\Support\Str;
  * @property string|null $initials
  * @property string|null $accent
  * @property string|null $launch_url
+ * @property string|null $category
  * @property string|null $oauth_client_id
  * @property bool $active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read OAuthClient|null $oauthClient
  */
-#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'oauth_client_id', 'active'])]
+#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'category', 'oauth_client_id', 'active'])]
 class Application extends Model
 {
     /**

@@ -34,6 +34,7 @@ interface ManagedApp {
     initials: string;
     accent: string | null;
     launch_url: string | null;
+    category: string | null;
     redirect_uri: string | null;
     client_id: string | null;
     active: boolean;
@@ -82,24 +83,24 @@ function accent(app: ManagedApp): string {
 
 function maskId(id: string | null): string {
     if (!id) {
-return '—';
-}
+        return '—';
+    }
 
     return id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
 }
 
 function shortRedirect(uri: string | null): string {
     if (!uri) {
-return '—';
-}
+        return '—';
+    }
 
     return uri.replace(/^https?:\/\//, '');
 }
 
 async function copy(value: string | null, label: string) {
     if (!value) {
-return;
-}
+        return;
+    }
 
     await navigator.clipboard.writeText(value);
     toast.success(`${label} copied`);
@@ -123,6 +124,7 @@ const editForm = useForm<{
     initials: string;
     accent: string;
     launch_url: string;
+    category: string;
     redirect_uri: string;
     active: boolean;
     users: number[];
@@ -133,6 +135,7 @@ const editForm = useForm<{
     initials: '',
     accent: '',
     launch_url: '',
+    category: '',
     redirect_uri: '',
     active: true,
     users: [],
@@ -148,6 +151,7 @@ function openEdit(app: ManagedApp) {
         initials: app.initials,
         accent: app.accent ?? '#B7863A',
         launch_url: app.launch_url ?? '',
+        category: app.category ?? '',
         redirect_uri: app.redirect_uri ?? '',
         active: app.active,
         users: [...app.user_ids],
@@ -165,8 +169,8 @@ function toggleUser(id: number) {
 
 function saveEdit() {
     if (editingId.value === null) {
-return;
-}
+        return;
+    }
 
     editForm.put(update(editingId.value).url, {
         preserveScroll: true,
@@ -193,6 +197,7 @@ const createForm = useForm<{
     initials: string;
     accent: string;
     launch_url: string;
+    category: string;
     redirect_uri: string;
 }>({
     name: '',
@@ -201,6 +206,7 @@ const createForm = useForm<{
     initials: '',
     accent: SWATCHES[0],
     launch_url: '',
+    category: '',
     redirect_uri: '',
 });
 
@@ -487,6 +493,15 @@ function submitRegister() {
                     <InputError :message="editForm.errors.launch_url" />
                 </div>
                 <div class="grid gap-2">
+                    <Label for="e-category">Category</Label>
+                    <Input
+                        id="e-category"
+                        v-model="editForm.category"
+                        placeholder="e.g. Games"
+                    />
+                    <InputError :message="editForm.errors.category" />
+                </div>
+                <div class="grid gap-2">
                     <Label>Accent colour</Label>
                     <div class="flex flex-wrap gap-2">
                         <button
@@ -671,6 +686,14 @@ function submitRegister() {
                             v-model="createForm.launch_url"
                             class="font-mono"
                             placeholder="https://chronos.thijssensoftware.nl"
+                        />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="r-category">Category</Label>
+                        <Input
+                            id="r-category"
+                            v-model="createForm.category"
+                            placeholder="e.g. Games"
                         />
                     </div>
                     <div class="grid gap-2">

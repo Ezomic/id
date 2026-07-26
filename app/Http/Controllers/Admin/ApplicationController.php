@@ -30,6 +30,7 @@ class ApplicationController extends Controller
                     'initials' => $app->glyph(),
                     'accent' => $app->accent,
                     'launch_url' => $app->launch_url,
+                    'category' => $app->category,
                     'redirect_uri' => $app->redirectUri(),
                     'client_id' => $app->oauth_client_id,
                     'active' => $app->active,

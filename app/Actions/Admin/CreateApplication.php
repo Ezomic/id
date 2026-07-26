@@ -32,6 +32,7 @@ class CreateApplication
             'initials' => $data['initials'] ?? null,
             'accent' => $data['accent'] ?? null,
             'launch_url' => $data['launch_url'] ?? null,
+            'category' => $data['category'] ?? null,
             'oauth_client_id' => $client->getKey(),
             'active' => $data['active'] ?? true,
         ]);

@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccessRequestController;
-use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
 use App\Http\Controllers\Admin\AccessAuditController;
+use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\UserController;
@@ -24,6 +24,7 @@ Route::get('/', function () {
                 'initials' => $app->glyph(),
                 'accent' => $app->accent,
                 'launch_url' => $app->launch_url,
+                'category' => $app->category,
             ]),
     ]);
 })->name('home');
