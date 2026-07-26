@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { dashboard, login } from '@/routes';
 
 interface LandingApp {
@@ -8,6 +9,7 @@ interface LandingApp {
     slug: string;
     initials: string;
     accent: string | null;
+    launch_url: string | null;
 }
 
 const props = defineProps<{
@@ -38,10 +40,6 @@ function linePoint(index: number, total: number) {
         x: 200 + Math.cos(angle) * radius,
         y: 200 + Math.sin(angle) * radius,
     };
-}
-
-function accent(app: LandingApp): string {
-    return app.accent ?? '#B7863A';
 }
 </script>
 
@@ -224,14 +222,12 @@ function accent(app: LandingApp): string {
                     :style="nodeStyle(i, hubApps.length)"
                     :title="app.name"
                 >
-                    <span
-                        class="flex size-9 items-center justify-center rounded-[10px]"
-                        :style="{
-                            background: `linear-gradient(150deg, ${accent(app)}, color-mix(in srgb, ${accent(app)} 78%, black))`,
-                        }"
-                    >
-                        {{ app.initials }}
-                    </span>
+                    <AppIcon
+                        :launch-url="app.launch_url"
+                        :initials="app.initials"
+                        :accent="app.accent"
+                        size="node"
+                    />
                 </span>
             </div>
         </main>
@@ -250,12 +246,12 @@ function accent(app: LandingApp): string {
                     :key="app.slug"
                     class="inline-flex items-center gap-2 text-sm font-semibold text-foreground/80"
                 >
-                    <span
-                        class="flex size-[22px] items-center justify-center rounded-md text-[11px] font-extrabold text-white"
-                        :style="{ background: accent(app) }"
-                    >
-                        {{ app.initials }}
-                    </span>
+                    <AppIcon
+                        :launch-url="app.launch_url"
+                        :initials="app.initials"
+                        :accent="app.accent"
+                        size="xs"
+                    />
                     {{ app.name }}
                 </span>
             </div>

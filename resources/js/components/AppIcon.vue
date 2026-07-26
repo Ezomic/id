@@ -6,7 +6,7 @@ const props = withDefaults(
         launchUrl: string | null;
         initials: string;
         accent: string | null;
-        size?: 'sm' | 'md';
+        size?: 'xs' | 'sm' | 'md' | 'node';
         disabled?: boolean;
     }>(),
     {
@@ -64,10 +64,27 @@ function onLoad(event: Event): void {
     }
 }
 
-const tile = computed(() =>
-    props.size === 'sm' ? 'size-8 rounded-lg' : 'size-11 rounded-xl',
+const tile = computed(
+    () =>
+        ({
+            xs: 'size-[22px] rounded-md',
+            sm: 'size-8 rounded-lg',
+            md: 'size-11 rounded-xl',
+            node: 'size-9 rounded-[10px]',
+        })[props.size],
 );
-const text = computed(() => (props.size === 'sm' ? 'text-sm' : 'text-lg'));
+const text = computed(
+    () =>
+        ({
+            xs: 'text-[11px]',
+            sm: 'text-sm',
+            md: 'text-lg',
+            node: 'text-base',
+        })[props.size],
+);
+const pad = computed(
+    () => ({ xs: 'p-[3px]', sm: 'p-1', md: 'p-1.5', node: 'p-1' })[props.size],
+);
 
 const fallbackStyle = computed(() =>
     props.disabled
@@ -95,7 +112,7 @@ const fallbackStyle = computed(() =>
             v-if="showIcon"
             :src="src!"
             alt=""
-            class="size-full object-contain p-1.5"
+            :class="['size-full object-contain', pad]"
             @error="onError"
             @load="onLoad"
         />
