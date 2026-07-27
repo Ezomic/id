@@ -45,8 +45,5 @@ return [
     // The app allowed to call the machine-to-machine portal endpoint
     // (POST /api/portal/apps) for its in-app app switcher, matched to its
     // registered application by slug.
-    'portal' => [
-        'switcher_client_slug' => env('PORTAL_SWITCHER_CLIENT_SLUG', 'tracker'),
-    ],
 
 ];
