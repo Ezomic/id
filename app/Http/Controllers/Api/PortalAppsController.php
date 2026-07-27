@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Portal\LaunchableAppsForUser;
 use App\Http\Controllers\Controller;
-use App\Models\Application;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,21 +40,15 @@ class PortalAppsController extends Controller
     }
 
     /**
-     * Only the configured app switcher's client may call this. The valid
-     * client-credentials token is matched to its registered application by slug.
+     * Every OAuth client registered on this ID is a trusted first-party app, so
+     * any valid client-credentials token may query the switcher on a user's
+     * behalf. The `client` middleware already validated the token.
      */
     private function authorizeCaller(): void
     {
         $guard = Auth::guard('api');
         $client = $guard instanceof TokenGuard ? $guard->client() : null;
 
-        abort_unless(
-            $client !== null && Application::query()
-                ->where('oauth_client_id', $client->getKey())
-                ->where('slug', config('services.portal.switcher_client_slug'))
-                ->where('active', true)
-                ->exists(),
-            Response::HTTP_FORBIDDEN,
-        );
+        abort_if($client === null, Response::HTTP_FORBIDDEN);
     }
 }

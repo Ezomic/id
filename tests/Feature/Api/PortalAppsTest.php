@@ -9,14 +9,6 @@ function actingAsPortalClient(): void
 {
     $client = app(ClientRepository::class)->createClientCredentialsGrantClient('Test Portal Client');
 
-    Application::create([
-        'name' => 'Tracker',
-        'slug' => 'tracker',
-        'launch_url' => 'https://tracker.thijssensoftware.nl',
-        'active' => true,
-        'oauth_client_id' => $client->getKey(),
-    ]);
-
     Passport::actingAsClient($client);
 }
 
@@ -25,13 +17,12 @@ it('rejects requests without a client token', function () {
         ->assertUnauthorized();
 });
 
-it('rejects a client that is not the app switcher', function () {
-    $client = app(ClientRepository::class)->createClientCredentialsGrantClient('Some Other Client');
-
-    Passport::actingAsClient($client);
+it('accepts any first-party client-credentials token', function () {
+    actingAsPortalClient();
 
     $this->postJson('/api/portal/apps', ['email' => 'nobody@example.com'])
-        ->assertForbidden();
+        ->assertOk()
+        ->assertExactJson(['applications' => []]);
 });
 
 it('returns the launchable apps a user can access', function () {
