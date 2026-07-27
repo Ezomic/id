@@ -58,6 +58,55 @@ class Application extends Model
         return $this->oauthClient?->redirect_uris[0] ?? null;
     }
 
+    /**
+     * The OAuth redirect URIs registered for this app, or an empty list when
+     * it has no backing client.
+     *
+     * @return list<string>
+     */
+    private function redirectUris(): array
+    {
+        $client = $this->oauthClient;
+
+        return $client === null ? [] : $client->redirect_uris;
+    }
+
+    /**
+     * Where to send a user to *launch* the app signed in. Apps that use the
+     * id-client package register a `/auth/sso/callback` redirect URI; hitting
+     * the sibling `/auth/sso/redirect` starts the OAuth flow, which completes
+     * silently against the user's existing ID session. Returns null for apps
+     * that don't follow that convention (they're launched via launch_url).
+     */
+    public function ssoLaunchUrl(): ?string
+    {
+        $suffix = '/auth/sso/callback';
+
+        $callbacks = array_filter(
+            $this->redirectUris(),
+            fn (string $uri) => str_ends_with($uri, $suffix),
+        );
+
+        if ($callbacks === []) {
+            return null;
+        }
+
+        $launchHost = $this->launch_url === null ? null : parse_url($this->launch_url, PHP_URL_HOST);
+
+        $chosen = null;
+
+        foreach ($callbacks as $uri) {
+            if ($launchHost !== null && parse_url($uri, PHP_URL_HOST) === $launchHost) {
+                $chosen = $uri;
+                break;
+            }
+        }
+
+        $chosen ??= reset($callbacks);
+
+        return substr($chosen, 0, -strlen($suffix)).'/auth/sso/redirect';
+    }
+
     public function glyph(): string
     {
         return $this->initials ?: Str::of($this->name)->trim()->substr(0, 1)->upper()->value();

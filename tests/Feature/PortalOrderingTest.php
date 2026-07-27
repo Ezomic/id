@@ -4,6 +4,24 @@ use App\Models\Application;
 use App\Models\Bookmark;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
+use Laravel\Passport\ClientRepository;
+
+function appWithClient(string $slug, string $launchUrl, array $redirectUris): Application
+{
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        name: ucfirst($slug),
+        redirectUris: $redirectUris,
+        confidential: true,
+    );
+
+    return Application::create([
+        'name' => ucfirst($slug),
+        'slug' => $slug,
+        'active' => true,
+        'launch_url' => $launchUrl,
+        'oauth_client_id' => $client->getKey(),
+    ]);
+}
 
 it('sorts pinned apps first, then by saved position', function () {
     $user = User::factory()->create();
@@ -52,6 +70,43 @@ it('launches an app, records the time, and redirects to its url', function () {
         ->assertRedirect('https://zero.thijssensoftware.nl');
 
     expect($user->applications()->find($app->id)->pivot->last_launched_at)->not->toBeNull();
+});
+
+it('launches into the app SSO flow when it uses id-client', function () {
+    $user = User::factory()->create();
+    $app = appWithClient('billr', 'https://billr.thijssensoftware.nl', [
+        'https://billr.thijssensoftware.nl/auth/sso/callback',
+    ]);
+    $user->applications()->attach($app);
+
+    $this->actingAs($user)
+        ->get(route('portal.launch', $app))
+        ->assertRedirect('https://billr.thijssensoftware.nl/auth/sso/redirect');
+});
+
+it('prefers the SSO callback whose host matches the launch url', function () {
+    $user = User::factory()->create();
+    $app = appWithClient('zero', 'https://zero.thijssensoftware.nl', [
+        'https://mail.thijssensoftware.nl/auth/sso/callback',
+        'https://zero.thijssensoftware.nl/auth/sso/callback',
+    ]);
+    $user->applications()->attach($app);
+
+    $this->actingAs($user)
+        ->get(route('portal.launch', $app))
+        ->assertRedirect('https://zero.thijssensoftware.nl/auth/sso/redirect');
+});
+
+it('falls back to the launch url for apps without id-client SSO', function () {
+    $user = User::factory()->create();
+    $app = appWithClient('status', 'https://status.thijssensoftware.nl', [
+        'https://status.thijssensoftware.nl/auth/callback',
+    ]);
+    $user->applications()->attach($app);
+
+    $this->actingAs($user)
+        ->get(route('portal.launch', $app))
+        ->assertRedirect('https://status.thijssensoftware.nl');
 });
 
 it('will not launch an app the user cannot access', function () {
