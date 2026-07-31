@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Concerns\InteractsWithCurrentUser;
 use App\Models\Application;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 class PortalController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     /**
      * Send the user to an app, recording the launch so it can surface in the
      * recently-used row. Going through id rather than linking straight out is
@@ -18,7 +21,7 @@ class PortalController extends Controller
      */
     public function launch(Request $request, Application $application): RedirectResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         abort_unless($user->canAccess($application) && $application->launch_url !== null, 403);
 
@@ -39,11 +42,15 @@ class PortalController extends Controller
             'ids.*' => ['integer'],
         ]);
 
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
-        foreach ($data['ids'] as $position => $id) {
-            if ($data['type'] === 'app') {
-                $user->applications()->updateExistingPivot((int) $id, ['position' => $position]);
+        $type = $request->string('type')->toString();
+
+        foreach ($request->collect('ids')->values() as $position => $id) {
+            $id = is_numeric($id) ? (int) $id : 0;
+
+            if ($type === 'app') {
+                $user->applications()->updateExistingPivot($id, ['position' => $position]);
 
                 continue;
             }
@@ -62,15 +69,18 @@ class PortalController extends Controller
             'pinned' => ['required', 'boolean'],
         ]);
 
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
-        if ($data['type'] === 'app') {
-            $user->applications()->updateExistingPivot($data['id'], ['pinned' => $data['pinned']]);
+        $id = $request->integer('id');
+        $pinned = $request->boolean('pinned');
+
+        if ($request->string('type')->toString() === 'app') {
+            $user->applications()->updateExistingPivot($id, ['pinned' => $pinned]);
 
             return back();
         }
 
-        $user->bookmarks()->whereKey($data['id'])->update(['pinned' => $data['pinned']]);
+        $user->bookmarks()->whereKey($id)->update(['pinned' => $pinned]);
 
         return back();
     }

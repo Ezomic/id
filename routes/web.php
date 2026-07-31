@@ -12,9 +12,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PortalController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia\Inertia::render('Welcome', [
+    return Inertia::render('Welcome', [
         'applications' => Application::where('active', true)
             ->orderBy('name')
             ->get()

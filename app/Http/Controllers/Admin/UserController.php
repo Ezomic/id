@@ -42,8 +42,14 @@ class UserController extends Controller
 
     public function updateAccess(UpdateAccessRequest $request, User $user, SetApplicationAccess $setAccess): RedirectResponse
     {
-        $before = $user->applications()->pluck('applications.id')->all();
-        $after = array_map('intval', $request->validated()['applications'] ?? []);
+        $before = array_values(array_map(
+            fn (mixed $id): int => is_numeric($id) ? (int) $id : 0,
+            $user->applications()->pluck('applications.id')->all(),
+        ));
+        $after = $request->collect('applications')
+            ->map(fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)
+            ->values()
+            ->all();
 
         $setAccess->handle($user, $after);
 

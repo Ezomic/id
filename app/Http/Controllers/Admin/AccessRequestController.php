@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AccessAudit;
 use App\Models\AccessRequest;
+use App\Models\User;
 use App\Notifications\AccessRequestDecided;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,8 +23,8 @@ class AccessRequestController extends Controller
             ->get()
             ->map(fn (AccessRequest $request): array => [
                 'id' => $request->id,
-                'user' => ['name' => $request->user->name, 'email' => $request->user->email],
-                'application' => $request->application->name,
+                'user' => ['name' => $request->user?->name, 'email' => $request->user?->email],
+                'application' => $request->application?->name,
                 'requested_at_diff' => $request->created_at?->diffForHumans(),
             ])
             ->values()
@@ -38,13 +39,20 @@ class AccessRequestController extends Controller
             return back();
         }
 
-        $accessRequest->user->applications()->syncWithoutDetaching([$accessRequest->application_id]);
-        $this->decide($accessRequest, 'approved', $request->user()->id);
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+
+        $subject = $accessRequest->user;
+        $application = $accessRequest->application;
+        abort_if($subject === null || $application === null, 404);
+
+        $subject->applications()->syncWithoutDetaching([$accessRequest->application_id]);
+        $this->decide($accessRequest, 'approved', $actor->id);
         AccessAudit::log('grant', [
             'subject_user_id' => $accessRequest->user_id,
             'application_id' => $accessRequest->application_id,
         ]);
-        $accessRequest->user->notify(new AccessRequestDecided($accessRequest->application->name, true));
+        $subject->notify(new AccessRequestDecided($application->name, true));
 
         return back()->with('status', 'Access granted.');
     }
@@ -55,8 +63,15 @@ class AccessRequestController extends Controller
             return back();
         }
 
-        $this->decide($accessRequest, 'denied', $request->user()->id);
-        $accessRequest->user->notify(new AccessRequestDecided($accessRequest->application->name, false));
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+
+        $subject = $accessRequest->user;
+        $application = $accessRequest->application;
+        abort_if($subject === null || $application === null, 404);
+
+        $this->decide($accessRequest, 'denied', $actor->id);
+        $subject->notify(new AccessRequestDecided($application->name, false));
 
         return back()->with('status', 'Request denied.');
     }

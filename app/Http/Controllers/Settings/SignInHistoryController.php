@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use App\Models\SignInEvent;
 use Illuminate\Http\Request;
@@ -10,10 +11,12 @@ use Inertia\Response;
 
 class SignInHistoryController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     public function index(Request $request): Response
     {
         $events = SignInEvent::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $this->currentUser($request)->id)
             ->latest()
             ->limit(50)
             ->get()

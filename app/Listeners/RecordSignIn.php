@@ -61,6 +61,8 @@ class RecordSignIn
             return null;
         }
 
-        return Application::query()->where('oauth_client_id', $clientId)->value('name');
+        $name = Application::query()->where('oauth_client_id', $clientId)->value('name');
+
+        return is_string($name) ? $name : null;
     }
 }

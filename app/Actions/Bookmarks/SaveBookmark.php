@@ -17,7 +17,7 @@ class SaveBookmark
      */
     public function handle(User $user, array $data): Bookmark
     {
-        $url = $this->normalize($data['url']);
+        $url = $this->normalize(is_string($data['url'] ?? null) ? $data['url'] : '');
         $domain = $this->domain($url);
         $meta = $this->metadata->fetch($url);
 

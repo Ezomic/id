@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -12,19 +13,21 @@ use Inertia\Response;
 
 class SessionController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     public function index(Request $request): Response
     {
         $currentId = $request->session()->getId();
 
         $sessions = DB::table('sessions')
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $this->currentUser($request)->id)
             ->orderByDesc('last_activity')
             ->get()
             ->map(fn (object $session): array => [
                 'id' => $session->id,
                 'ip_address' => $session->ip_address,
                 'user_agent' => $session->user_agent,
-                'last_active_diff' => CarbonImmutable::createFromTimestamp($session->last_activity)->diffForHumans(),
+                'last_active_diff' => CarbonImmutable::createFromTimestamp(is_numeric($session->last_activity) ? (int) $session->last_activity : 0)->diffForHumans(),
                 'is_current' => $session->id === $currentId,
             ])
             ->values()
@@ -44,7 +47,7 @@ class SessionController extends Controller
         }
 
         DB::table('sessions')
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $this->currentUser($request)->id)
             ->where('id', $id)
             ->delete();
 
@@ -54,7 +57,7 @@ class SessionController extends Controller
     public function destroyOthers(Request $request): RedirectResponse
     {
         DB::table('sessions')
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $this->currentUser($request)->id)
             ->where('id', '!=', $request->session()->getId())
             ->delete();
 

@@ -82,12 +82,15 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
             ->whereHas('groups', fn ($query) => $query->whereIn('groups.id', $this->groups()->select('groups.id')))
             ->pluck('id');
 
-        return $direct->merge($viaGroups)->unique()->values();
+        return $direct->merge($viaGroups)
+            ->map(fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)
+            ->unique()
+            ->values();
     }
 
     public function canAccess(Application $application): bool
     {
-        return $this->accessibleApplicationIds()->contains($application->getKey());
+        return $this->accessibleApplicationIds()->contains($application->id);
     }
 
     /**
