@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\InteractsWithCurrentUser;
 use App\Models\AccessRequest;
 use App\Models\Application;
 use App\Models\ApplicationUser;
@@ -14,9 +15,11 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     public function index(Request $request): Response
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         /** @var Collection<int, ApplicationUser> $pivots */
         $pivots = ApplicationUser::where('user_id', $user->id)->get()->keyBy('application_id');
@@ -69,7 +72,7 @@ class DashboardController extends Controller
         // incoming name/recency order as the tiebreak. Chained stable sorts, applied
         // least-significant first, since the multi-key array form does not take closures.
         $pinFirst = fn (array $item): int => $item['pinned'] ? 0 : 1;
-        $byPosition = fn (array $item): int => $item['position'] ?? PHP_INT_MAX;
+        $byPosition = fn (array $item): int => is_numeric($item['position'] ?? null) ? (int) $item['position'] : PHP_INT_MAX;
 
         return Inertia::render('Dashboard', [
             'applications' => $applications->sortBy($byPosition)->sortBy($pinFirst)->values(),

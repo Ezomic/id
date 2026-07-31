@@ -31,7 +31,7 @@ class UpdateApplication
         }
 
         if (array_key_exists('users', $data)) {
-            $application->users()->sync($data['users'] ?? []);
+            $application->users()->sync(array_values(array_map(fn (mixed $v): int => is_numeric($v) ? (int) $v : 0, is_array($data['users'] ?? null) ? $data['users'] : [])));
         }
     }
 }

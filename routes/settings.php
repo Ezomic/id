@@ -5,6 +5,7 @@ use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
 use App\Http\Controllers\Settings\SignInHistoryController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
@@ -21,7 +22,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/sign-in-history', [SignInHistoryController::class, 'index'])->name('sign-in-history.edit');
 
-    Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+    Route::get('settings/appearance', fn () => Inertia::render('settings/Appearance'))->name('appearance.edit');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

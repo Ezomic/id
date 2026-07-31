@@ -19,7 +19,7 @@ class CreateUser
             'is_admin' => $data['is_admin'] ?? false,
         ]);
 
-        $user->applications()->sync($data['applications'] ?? []);
+        $user->applications()->sync(array_values(array_map(fn (mixed $v): int => is_numeric($v) ? (int) $v : 0, is_array($data['applications'] ?? null) ? $data['applications'] : [])));
 
         return $user;
     }

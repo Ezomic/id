@@ -28,7 +28,7 @@ class UserInfoController extends Controller
         abort_unless($user->canAccess($application), Response::HTTP_FORBIDDEN, 'You do not have access to this application.');
 
         return response()->json([
-            'sub' => (string) $user->getKey(),
+            'sub' => (string) $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'applications' => Application::query()

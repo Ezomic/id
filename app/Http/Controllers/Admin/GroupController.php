@@ -39,18 +39,18 @@ class GroupController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'name' => ['required', 'string', 'max:255'],
         ]);
 
-        Group::create(['name' => $data['name']]);
+        Group::create(['name' => $request->string('name')->toString()]);
 
         return back()->with('status', 'Group created.');
     }
 
     public function update(Request $request, Group $group): RedirectResponse
     {
-        $data = $request->validate([
+        $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'users' => ['array'],
             'users.*' => [Rule::exists('users', 'id')],
@@ -58,14 +58,14 @@ class GroupController extends Controller
             'applications.*' => [Rule::exists('applications', 'id')],
         ]);
 
-        if (isset($data['name'])) {
-            $group->update(['name' => $data['name']]);
+        if ($request->has('name')) {
+            $group->update(['name' => $request->string('name')->toString()]);
         }
 
-        $beforeUsers = $group->users()->pluck('users.id')->all();
-        $beforeApps = $group->applications()->pluck('applications.id')->all();
-        $afterUsers = array_map('intval', $data['users'] ?? []);
-        $afterApps = array_map('intval', $data['applications'] ?? []);
+        $beforeUsers = $this->intList($group->users()->pluck('users.id')->all());
+        $beforeApps = $this->intList($group->applications()->pluck('applications.id')->all());
+        $afterUsers = $this->intList($request->collect('users')->all());
+        $afterApps = $this->intList($request->collect('applications')->all());
 
         $group->users()->sync($afterUsers);
         $group->applications()->sync($afterApps);
@@ -91,5 +91,14 @@ class GroupController extends Controller
         $group->delete();
 
         return back()->with('status', 'Group deleted.');
+    }
+
+    /**
+     * @param  array<mixed>  $values
+     * @return array<int, int>
+     */
+    private function intList(array $values): array
+    {
+        return array_values(array_map(fn (mixed $v): int => is_numeric($v) ? (int) $v : 0, $values));
     }
 }

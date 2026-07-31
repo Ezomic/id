@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Bookmarks\SaveBookmark;
 use App\Actions\Bookmarks\UpdateBookmark;
+use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Requests\StoreBookmarkRequest;
 use App\Http\Requests\UpdateBookmarkRequest;
 use App\Models\Bookmark;
@@ -15,9 +16,11 @@ use Inertia\Response;
 
 class BookmarkController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     public function index(Request $request): Response
     {
-        $bookmarks = $request->user()->bookmarks()
+        $bookmarks = $this->currentUser($request)->bookmarks()
             ->latest()
             ->get()
             ->map(fn (Bookmark $bookmark) => [
@@ -41,7 +44,7 @@ class BookmarkController extends Controller
 
     public function store(StoreBookmarkRequest $request, SaveBookmark $saveBookmark): RedirectResponse
     {
-        $saveBookmark->handle($request->user(), $request->validated());
+        $saveBookmark->handle($this->currentUser($request), $request->validated());
 
         return back()->with('status', 'Link saved.');
     }

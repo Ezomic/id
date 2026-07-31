@@ -24,11 +24,11 @@ class PortalAppsController extends Controller
     {
         $this->authorizeCaller();
 
-        $data = $request->validate([
+        $request->validate([
             'email' => ['required', 'email'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $user = User::where('email', $request->string('email')->toString())->first();
 
         if ($user === null) {
             return response()->json(['applications' => []]);

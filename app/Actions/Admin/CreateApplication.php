@@ -19,14 +19,17 @@ class CreateApplication
      */
     public function handle(array $data): array
     {
+        $name = is_string($data['name'] ?? null) ? $data['name'] : '';
+        $redirectUri = is_string($data['redirect_uri'] ?? null) ? $data['redirect_uri'] : '';
+
         $client = $this->clients->createAuthorizationCodeGrantClient(
-            name: $data['name'],
-            redirectUris: [$data['redirect_uri']],
+            name: $name,
+            redirectUris: [$redirectUri],
             confidential: true,
         );
 
         $application = Application::create([
-            'name' => $data['name'],
+            'name' => $name,
             'slug' => $data['slug'],
             'description' => $data['description'] ?? null,
             'initials' => $data['initials'] ?? null,
@@ -37,12 +40,23 @@ class CreateApplication
             'active' => $data['active'] ?? true,
         ]);
 
-        $application->users()->sync($data['users'] ?? []);
+        $application->users()->sync($this->intList($data['users'] ?? []));
 
         return [
             'application' => $application,
-            'client_id' => (string) $client->getKey(),
-            'client_secret' => (string) $client->plainSecret,
+            'client_id' => is_scalar($client->getKey()) ? (string) $client->getKey() : '',
+            'client_secret' => is_string($client->plainSecret) ? $client->plainSecret : '',
         ];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function intList(mixed $values): array
+    {
+        return array_values(array_map(
+            fn (mixed $v): int => is_numeric($v) ? (int) $v : 0,
+            is_array($values) ? $values : [],
+        ));
     }
 }

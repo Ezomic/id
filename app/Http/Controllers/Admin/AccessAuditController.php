@@ -26,7 +26,7 @@ class AccessAuditController extends Controller
             ->get()
             ->map(fn (AccessAudit $audit): array => [
                 'id' => $audit->id,
-                'actor' => optional($audit->actor)->name ?? 'System',
+                'actor' => $audit->actor->name ?? 'System',
                 'action' => $audit->action,
                 'subject' => $audit->subjectUser?->name,
                 'application' => $audit->application?->name,

@@ -38,6 +38,10 @@ class StatusReader
                 $states = [];
 
                 foreach ((array) $response->json('services', []) as $service) {
+                    if (! is_array($service)) {
+                        continue;
+                    }
+
                     $slug = $service['slug'] ?? null;
                     $state = $service['state'] ?? null;
 
