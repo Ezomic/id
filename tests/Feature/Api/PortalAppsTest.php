@@ -22,7 +22,7 @@ it('accepts any first-party client-credentials token', function () {
 
     $this->postJson('/api/portal/apps', ['email' => 'nobody@example.com'])
         ->assertOk()
-        ->assertExactJson(['applications' => []]);
+        ->assertExactJson(['applications' => [], 'categories' => []]);
 });
 
 it('returns the launchable apps a user can access', function () {
@@ -72,6 +72,60 @@ it('returns the launchable apps a user can access', function () {
                     'launch_url' => 'https://billr.thijssensoftware.nl',
                 ],
             ],
+            'categories' => [],
+        ]);
+});
+
+it('splits categorized apps into their own groups', function () {
+    actingAsPortalClient();
+
+    $user = User::factory()->create();
+
+    $billr = Application::create([
+        'name' => 'Billr',
+        'slug' => 'billr',
+        'accent' => '#4f46e5',
+        'launch_url' => 'https://billr.thijssensoftware.nl',
+        'active' => true,
+    ]);
+
+    $chess = Application::create([
+        'name' => 'Chess',
+        'slug' => 'chess',
+        'accent' => null,
+        'launch_url' => 'https://chess.thijssensoftware.nl',
+        'category' => 'Games',
+        'active' => true,
+    ]);
+
+    $user->applications()->attach([$billr->id, $chess->id]);
+
+    $this->postJson('/api/portal/apps', ['email' => $user->email])
+        ->assertOk()
+        ->assertExactJson([
+            'applications' => [
+                [
+                    'slug' => 'billr',
+                    'name' => 'Billr',
+                    'initials' => 'B',
+                    'accent' => '#4f46e5',
+                    'launch_url' => 'https://billr.thijssensoftware.nl',
+                ],
+            ],
+            'categories' => [
+                [
+                    'category' => 'Games',
+                    'apps' => [
+                        [
+                            'slug' => 'chess',
+                            'name' => 'Chess',
+                            'initials' => 'C',
+                            'accent' => null,
+                            'launch_url' => 'https://chess.thijssensoftware.nl',
+                        ],
+                    ],
+                ],
+            ],
         ]);
 });
 
@@ -80,7 +134,7 @@ it('returns an empty list for an unknown email', function () {
 
     $this->postJson('/api/portal/apps', ['email' => 'unknown@example.com'])
         ->assertOk()
-        ->assertExactJson(['applications' => []]);
+        ->assertExactJson(['applications' => [], 'categories' => []]);
 });
 
 it('validates the email', function () {

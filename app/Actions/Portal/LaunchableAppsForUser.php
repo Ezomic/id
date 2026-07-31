@@ -10,10 +10,12 @@ use App\Models\User;
 class LaunchableAppsForUser
 {
     /**
-     * The active applications a user may open from an app switcher: those they
-     * can access that expose a launch URL.
+     * The active applications a user may open from an app switcher, split into
+     * the uncategorized main apps and grouped categories (e.g. Games), mirroring
+     * the in-app portal. Only apps the user can access that expose a launch URL
+     * are included.
      *
-     * @return list<array{slug: string, name: string, initials: string, accent: string|null, launch_url: string}>
+     * @return array{applications: list<array{slug: string, name: string, initials: string, accent: string|null, launch_url: string}>, categories: list<array{category: string, apps: list<array{slug: string, name: string, initials: string, accent: string|null, launch_url: string}>}>}
      */
     public function handle(User $user): array
     {
@@ -24,22 +26,41 @@ class LaunchableAppsForUser
             ->orderBy('name')
             ->get();
 
-        $apps = [];
+        $main = [];
+
+        /** @var array<string, list<array{slug: string, name: string, initials: string, accent: string|null, launch_url: string}>> $grouped */
+        $grouped = [];
 
         foreach ($applications as $application) {
             if ($application->launch_url === null) {
                 continue;
             }
 
-            $apps[] = [
+            $entry = [
                 'slug' => $application->slug,
                 'name' => $application->name,
                 'initials' => $application->glyph(),
                 'accent' => $application->accent,
                 'launch_url' => $application->launch_url,
             ];
+
+            if ($application->category === null) {
+                $main[] = $entry;
+
+                continue;
+            }
+
+            $grouped[$application->category][] = $entry;
         }
 
-        return $apps;
+        ksort($grouped);
+
+        $categories = [];
+
+        foreach ($grouped as $category => $apps) {
+            $categories[] = ['category' => $category, 'apps' => $apps];
+        }
+
+        return ['applications' => $main, 'categories' => $categories];
     }
 }

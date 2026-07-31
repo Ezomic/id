@@ -31,12 +31,10 @@ class PortalAppsController extends Controller
         $user = User::where('email', $request->string('email')->toString())->first();
 
         if ($user === null) {
-            return response()->json(['applications' => []]);
+            return response()->json(['applications' => [], 'categories' => []]);
         }
 
-        return response()->json([
-            'applications' => $launchableApps->handle($user),
-        ]);
+        return response()->json($launchableApps->handle($user));
     }
 
     /**
