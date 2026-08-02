@@ -28,6 +28,19 @@ class CreateApplication
             confidential: true,
         );
 
+        // Passport's auth-code helper grants only authorization_code and
+        // refresh_token, but a workflow app also calls ID machine-to-machine to
+        // populate its portal switcher. Without client_credentials that request
+        // returns unauthorized_client, and because IdPortalClient fails soft the
+        // switcher silently renders "No other apps available" with nothing in
+        // any log to explain it.
+        $grants = $client->getAttribute('grant_types');
+        $grants = is_array($grants) ? $grants : [];
+
+        $client->forceFill([
+            'grant_types' => [...$grants, 'client_credentials'],
+        ])->save();
+
         $application = Application::create([
             'name' => $name,
             'slug' => $data['slug'],
