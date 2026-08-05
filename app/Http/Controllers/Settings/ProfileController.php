@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Access\RevokeUserTokens;
+use App\Actions\Settings\RequestEmailChange;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
@@ -21,29 +22,40 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('settings/Profile', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'pendingEmail' => $user instanceof User ? $user->pending_email : null,
         ]);
     }
 
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request, RequestEmailChange $requestEmailChange): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
 
-        $user->fill($request->validated());
+        $validated = $request->validated();
+        $email = is_string($validated['email'] ?? null) ? $validated['email'] : $user->email;
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+        $user->fill(['name' => $validated['name'] ?? $user->name])->save();
+
+        if ($email === $user->email) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
+
+            return to_route('profile.edit');
         }
 
-        $user->save();
+        $requestEmailChange->handle($user, $email);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Check :email to confirm the change. Your current address keeps working until you do.', ['email' => $email]),
+        ]);
 
         return to_route('profile.edit');
     }

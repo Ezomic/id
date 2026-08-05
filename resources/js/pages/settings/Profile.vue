@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, usePage } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/DeleteUser.vue';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
+import { cancel as cancelEmailChange } from '@/routes/profile/email';
 
 defineOptions({
     layout: {
@@ -20,6 +21,8 @@ defineOptions({
         ],
     },
 });
+
+defineProps<{ pendingEmail?: string | null }>();
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -69,6 +72,26 @@ const user = computed(() => page.props.auth.user);
                     placeholder="Email address"
                 />
                 <InputError class="mt-2" :message="errors.email" />
+
+                <div
+                    v-if="pendingEmail"
+                    class="mt-1 rounded-lg border border-border bg-muted/40 p-3 text-sm"
+                >
+                    <p>
+                        Waiting for confirmation at
+                        <span class="font-medium">{{ pendingEmail }}</span
+                        >. Your current address stays in control of the account
+                        until then.
+                    </p>
+                    <Link
+                        :href="cancelEmailChange()"
+                        as="button"
+                        type="button"
+                        class="mt-2 text-sm font-medium text-destructive underline-offset-4 hover:underline"
+                    >
+                        Cancel this change
+                    </Link>
+                </div>
             </div>
 
             <div class="flex items-center gap-4">
