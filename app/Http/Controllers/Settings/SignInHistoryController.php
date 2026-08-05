@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use App\Models\SignInEvent;
+use App\Services\DeviceFingerprint;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,7 +14,7 @@ class SignInHistoryController extends Controller
 {
     use InteractsWithCurrentUser;
 
-    public function index(Request $request): Response
+    public function index(Request $request, DeviceFingerprint $fingerprints): Response
     {
         $events = SignInEvent::query()
             ->where('user_id', $this->currentUser($request)->id)
@@ -24,7 +25,7 @@ class SignInHistoryController extends Controller
                 'id' => $event->id,
                 'method' => $event->method,
                 'ip_address' => $event->ip_address,
-                'user_agent' => $event->user_agent,
+                'device' => $fingerprints->label($event->user_agent),
                 'application' => $event->application,
                 'created_at_diff' => $event->created_at?->diffForHumans(),
             ])

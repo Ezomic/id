@@ -15,12 +15,13 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property string $method
  * @property string|null $ip_address
+ * @property string|null $network
  * @property string|null $user_agent
  * @property string|null $application
  * @property string $device_fingerprint
  * @property Carbon|null $created_at
  */
-#[Fillable(['user_id', 'method', 'ip_address', 'user_agent', 'application', 'device_fingerprint'])]
+#[Fillable(['user_id', 'method', 'ip_address', 'network', 'user_agent', 'application', 'device_fingerprint'])]
 class SignInEvent extends Model
 {
     use MassPrunable;
