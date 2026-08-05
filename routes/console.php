@@ -1,8 +1,18 @@
 <?php
 
+use App\Models\SignInEvent;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Seven consumer apps refreshing 15 minute access tokens fill the Passport
+// tables faster than anything else in this database.
+Schedule::command('passport:purge')->daily();
+
+Schedule::command('model:prune', ['--model' => [SignInEvent::class]])->daily();
+
+Schedule::command('id:prune-login-codes')->hourly();

@@ -17,7 +17,7 @@
 #   6. Migrate
 #   7. Rebuild caches
 #   8. Storage symlink + permissions
-#   9. Reload PHP-FPM
+#   9. Ensure the scheduler cron entry exists
 #  10. Back online + smoke test
 # =============================================================================
 
@@ -130,6 +130,18 @@ find storage bootstrap/cache database -type d -exec chmod 2775 {} + 2>/dev/null 
 find storage bootstrap/cache database -type f -exec chmod 664 {} + 2>/dev/null || true
 chmod 660 storage/oauth-private.key storage/oauth-public.key 2>/dev/null || true
 ok "Permissions set"
+
+step "Ensuring the scheduler cron entry exists"
+# Nothing has ever installed this, so the schedule in routes/console.php would
+# never fire and the Passport tables would grow forever. Idempotent: the entry
+# is keyed on APP_DIR, so re-running the deploy never duplicates it.
+CRON_LINE="* * * * * cd $APP_DIR && $PHP artisan schedule:run >> /dev/null 2>&1"
+if crontab -l 2>/dev/null | grep -Fq "cd $APP_DIR && $PHP artisan schedule:run"; then
+  ok "Cron entry already present"
+else
+  (crontab -l 2>/dev/null || true; echo "$CRON_LINE") | crontab -
+  ok "Cron entry installed"
+fi
 
 # No `systemctl reload php8.4-fpm` here on purpose. All 21 sites on the
 # droplet share one php-fpm master and therefore one opcache, so a reload
