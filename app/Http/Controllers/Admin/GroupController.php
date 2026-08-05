@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Access\RevokeTokensForLostAccess;
 use App\Http\Controllers\Controller;
 use App\Models\AccessAudit;
 use App\Models\Application;
@@ -48,7 +49,7 @@ class GroupController extends Controller
         return back()->with('status', 'Group created.');
     }
 
-    public function update(Request $request, Group $group): RedirectResponse
+    public function update(Request $request, Group $group, RevokeTokensForLostAccess $revokeTokens): RedirectResponse
     {
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -83,14 +84,32 @@ class GroupController extends Controller
             AccessAudit::log('group_app_revoke', ['group_id' => $group->id, 'application_id' => $applicationId]);
         }
 
+        // Members removed from the group and members who kept their seat while
+        // the group lost an app both come out the other side with less access.
+        $this->revokeLostTokens(array_unique([...$beforeUsers, ...$afterUsers]), $revokeTokens);
+
         return back()->with('status', 'Group updated.');
     }
 
-    public function destroy(Group $group): RedirectResponse
+    public function destroy(Group $group, RevokeTokensForLostAccess $revokeTokens): RedirectResponse
     {
+        $members = $this->intList($group->users()->pluck('users.id')->all());
+
         $group->delete();
 
+        $this->revokeLostTokens($members, $revokeTokens);
+
         return back()->with('status', 'Group deleted.');
+    }
+
+    /**
+     * @param  array<int, int>  $userIds
+     */
+    private function revokeLostTokens(array $userIds, RevokeTokensForLostAccess $revokeTokens): void
+    {
+        foreach (User::query()->whereIn('id', $userIds)->get() as $user) {
+            $revokeTokens->handle($user);
+        }
     }
 
     /**

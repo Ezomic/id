@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Access\RevokeTokensForLostAccess;
 use App\Actions\Admin\CreateUser;
 use App\Actions\Admin\SetApplicationAccess;
 use App\Http\Controllers\Controller;
@@ -40,7 +41,7 @@ class UserController extends Controller
         return back()->with('status', 'User created.');
     }
 
-    public function updateAccess(UpdateAccessRequest $request, User $user, SetApplicationAccess $setAccess): RedirectResponse
+    public function updateAccess(UpdateAccessRequest $request, User $user, SetApplicationAccess $setAccess, RevokeTokensForLostAccess $revokeTokens): RedirectResponse
     {
         $before = array_values(array_map(
             fn (mixed $id): int => is_numeric($id) ? (int) $id : 0,
@@ -60,6 +61,8 @@ class UserController extends Controller
         foreach (array_diff($before, $after) as $applicationId) {
             AccessAudit::log('revoke', ['subject_user_id' => $user->id, 'application_id' => $applicationId]);
         }
+
+        $revokeTokens->handle($user->fresh() ?? $user);
 
         return back()->with('status', 'Access updated.');
     }
