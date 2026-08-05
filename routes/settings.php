@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\EmailChangeController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\RecoveryCodeController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
 use App\Http\Controllers\Settings\SignInHistoryController;
@@ -19,6 +20,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('settings/profile/email', [EmailChangeController::class, 'cancel'])->name('profile.email.cancel');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
+    Route::post('settings/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->name('recovery-codes.regenerate');
+    Route::delete('settings/recovery-codes', [RecoveryCodeController::class, 'acknowledge'])->name('recovery-codes.acknowledge');
 
     Route::get('settings/sessions', [SessionController::class, 'index'])->name('sessions.edit');
     Route::delete('settings/sessions/others', [SessionController::class, 'destroyOthers'])->name('sessions.destroyOthers');

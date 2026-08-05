@@ -19,6 +19,8 @@ class SecurityController extends Controller
     public function edit(Request $request): Response
     {
         return Inertia::render('settings/Security', [
+            'newRecoveryCodes' => $request->session()->get('recovery_codes'),
+            'unusedRecoveryCodes' => $this->currentUser($request)->recoveryCodes()->whereNull('used_at')->count(),
             'canManagePasskeys' => Features::canManagePasskeys(),
             'passkeys' => Features::canManagePasskeys()
                 ? $this->currentUser($request)

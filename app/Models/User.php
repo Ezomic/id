@@ -63,6 +63,17 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     }
 
     /**
+     * One-time codes for the case where neither the inbox nor a passkey is
+     * reachable, which would otherwise be a permanent lockout.
+     *
+     * @return HasMany<RecoveryCode, $this>
+     */
+    public function recoveryCodes(): HasMany
+    {
+        return $this->hasMany(RecoveryCode::class);
+    }
+
+    /**
      * Groups this user belongs to. Group grants are one source of app access.
      *
      * @return BelongsToMany<Group, $this>
