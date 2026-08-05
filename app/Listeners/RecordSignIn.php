@@ -2,8 +2,10 @@
 
 namespace App\Listeners;
 
+use App\Actions\Auth\GenerateRecoveryCodes;
 use App\Models\Application;
 use App\Models\SignInEvent;
+use App\Models\User;
 use App\Notifications\NewDeviceSignIn;
 use App\Services\DeviceFingerprint;
 use Illuminate\Auth\Events\Login;
@@ -14,6 +16,7 @@ class RecordSignIn
     public function __construct(
         private readonly Request $request,
         private readonly DeviceFingerprint $fingerprints,
+        private readonly GenerateRecoveryCodes $recoveryCodes,
     ) {}
 
     public function handle(Login $event): void
@@ -44,6 +47,8 @@ class RecordSignIn
             'network' => $network,
         ]);
 
+        $this->issueRecoveryCodes($event);
+
         // Every device is new on the first sign-in, so alerting there is noise.
         if ($isFirstEver || ($knownDevice && $knownNetwork)) {
             return;
@@ -58,11 +63,28 @@ class RecordSignIn
         ));
     }
 
+    /**
+     * An account with no codes has no way out of a lost inbox, so the first
+     * sign-in that finds none issues a set. The plaintext rides the session to
+     * the security page, which is the only place it is ever shown.
+     */
+    private function issueRecoveryCodes(Login $event): void
+    {
+        $user = $event->user;
+
+        if (! $user instanceof User || $user->recoveryCodes()->exists()) {
+            return;
+        }
+
+        $this->request->session()->put('recovery_codes', $this->recoveryCodes->handle($user));
+    }
+
     private function method(): string
     {
         return match ($this->request->route()?->getName()) {
             'passkey.login' => 'passkey',
             'login.code.verify' => 'email_code',
+            'login.recovery-code' => 'recovery_code',
             default => 'other',
         };
     }

@@ -22,6 +22,7 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
             'email' => $request->session()->get('login_email'),
             'codeSent' => (bool) $request->session()->get('code_sent'),
+            'recoveryMode' => (bool) $request->session()->get('recovery_mode'),
         ]));
 
         $this->configureRateLimiting();

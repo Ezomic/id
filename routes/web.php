@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
+use App\Http\Controllers\Auth\RecoveryCodeController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PortalController;
@@ -39,6 +40,10 @@ Route::middleware('guest')->group(function () {
     Route::post('login/code/verify', [LoginCodeController::class, 'verify'])
         ->middleware('throttle:login')
         ->name('login.code.verify');
+
+    Route::post('login/recovery-code', [RecoveryCodeController::class, 'redeem'])
+        ->middleware('throttle:login')
+        ->name('login.recovery-code');
 });
 
 Route::middleware(['auth'])->group(function () {
