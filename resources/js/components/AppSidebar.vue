@@ -6,6 +6,7 @@ import {
     KeyRound,
     LayoutGrid,
     ScrollText,
+    ShieldAlert,
     Users,
     UsersRound,
 } from '@lucide/vue';
@@ -26,6 +27,7 @@ import { dashboard } from '@/routes';
 import { index as adminAccessAudit } from '@/routes/admin/access-audit';
 import { index as adminAccessRequests } from '@/routes/admin/access-requests';
 import { index as adminApplications } from '@/routes/admin/applications';
+import { index as adminFailedSignIns } from '@/routes/admin/failed-sign-ins';
 import { index as adminGroups } from '@/routes/admin/groups';
 import { index as adminUsers } from '@/routes/admin/users';
 import { index as bookmarks } from '@/routes/bookmarks';
@@ -71,6 +73,11 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: 'Audit log',
                   href: adminAccessAudit(),
                   icon: ScrollText,
+              },
+              {
+                  title: 'Failed sign-ins',
+                  href: adminFailedSignIns(),
+                  icon: ShieldAlert,
               },
           ]
         : []),

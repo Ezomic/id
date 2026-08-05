@@ -5,6 +5,7 @@ import { edit } from '@/routes/sign-in-history';
 interface SignInEvent {
     id: number;
     method: string;
+    outcome: string;
     ip_address: string | null;
     device: string;
     application: string | null;
@@ -35,8 +36,9 @@ const methodLabels: Record<string, string> = {
                 Sign-in history
             </h1>
             <p class="text-sm text-muted-foreground">
-                Recent sign-ins to your account. We email you when one happens
-                from a device we haven't seen before.
+                Recent sign-ins to your account, successful and failed. We email
+                you when one happens from a device or network we haven't seen
+                before.
             </p>
         </header>
 
@@ -48,6 +50,12 @@ const methodLabels: Record<string, string> = {
             >
                 <div class="min-w-0">
                     <p class="text-sm font-semibold">
+                        <span
+                            v-if="event.outcome === 'failure'"
+                            class="mr-1.5 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive"
+                        >
+                            Failed
+                        </span>
                         {{ methodLabels[event.method] ?? event.method }}
                         <span
                             v-if="event.application"

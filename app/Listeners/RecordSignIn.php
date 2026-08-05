@@ -25,7 +25,9 @@ class RecordSignIn
         $fingerprint = $this->fingerprints->forUserAgent($userAgent);
         $network = $this->fingerprints->networkFor($ip);
 
-        $history = SignInEvent::query()->where('user_id', $userId);
+        $history = SignInEvent::query()
+            ->where('user_id', $userId)
+            ->where('outcome', SignInEvent::SUCCESS);
 
         $isFirstEver = ! (clone $history)->exists();
         $knownDevice = (clone $history)->where('device_fingerprint', $fingerprint)->exists();
@@ -34,6 +36,7 @@ class RecordSignIn
         SignInEvent::create([
             'user_id' => $userId,
             'method' => $this->method(),
+            'outcome' => SignInEvent::SUCCESS,
             'ip_address' => $ip,
             'user_agent' => $userAgent,
             'application' => $this->initiatingApplication(),

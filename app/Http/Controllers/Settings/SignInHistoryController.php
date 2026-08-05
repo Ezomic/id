@@ -24,6 +24,7 @@ class SignInHistoryController extends Controller
             ->map(fn (SignInEvent $event): array => [
                 'id' => $event->id,
                 'method' => $event->method,
+                'outcome' => $event->outcome,
                 'ip_address' => $event->ip_address,
                 'device' => $fingerprints->label($event->user_agent),
                 'application' => $event->application,

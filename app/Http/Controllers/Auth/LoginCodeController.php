@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Auth\RecordFailedSignIn;
 use App\Actions\Auth\SendLoginCode;
 use App\Actions\Auth\VerifyLoginCode;
 use App\Http\Controllers\Controller;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginCodeController extends Controller
 {
-    public function send(Request $request, SendLoginCode $sendLoginCode): RedirectResponse
+    public function send(Request $request, SendLoginCode $sendLoginCode, RecordFailedSignIn $recordFailure): RedirectResponse
     {
         $request->validate(['email' => ['required', 'email']]);
 
@@ -21,6 +22,8 @@ class LoginCodeController extends Controller
 
         if ($user) {
             $sendLoginCode->handle($user);
+        } else {
+            $recordFailure->handle(null, 'email_code');
         }
 
         return redirect()->route('login')
@@ -29,7 +32,7 @@ class LoginCodeController extends Controller
             ->with('status', 'If that email belongs to an account, a login code is on its way.');
     }
 
-    public function verify(Request $request, VerifyLoginCode $verifyLoginCode): RedirectResponse
+    public function verify(Request $request, VerifyLoginCode $verifyLoginCode, RecordFailedSignIn $recordFailure): RedirectResponse
     {
         $request->validate([
             'email' => ['required', 'email'],
@@ -45,6 +48,8 @@ class LoginCodeController extends Controller
 
             return redirect()->intended(route('dashboard', absolute: false));
         }
+
+        $recordFailure->handle($user, 'email_code');
 
         return redirect()->route('login')
             ->with('login_email', $email)
