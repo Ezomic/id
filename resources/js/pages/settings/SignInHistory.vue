@@ -6,7 +6,7 @@ interface SignInEvent {
     id: number;
     method: string;
     ip_address: string | null;
-    user_agent: string | null;
+    device: string;
     application: string | null;
     created_at_diff: string | null;
 }
@@ -24,36 +24,6 @@ const methodLabels: Record<string, string> = {
     email_code: 'Email code',
     other: 'Other',
 };
-
-function deviceLabel(ua: string | null): string {
-    if (!ua) {
-        return 'Unknown device';
-    }
-
-    const browser = /Edg/.test(ua)
-        ? 'Edge'
-        : /Chrome/.test(ua)
-          ? 'Chrome'
-          : /Firefox/.test(ua)
-            ? 'Firefox'
-            : /Safari/.test(ua)
-              ? 'Safari'
-              : 'Browser';
-
-    const os = /Windows/.test(ua)
-        ? 'Windows'
-        : /Macintosh|Mac OS/.test(ua)
-          ? 'macOS'
-          : /iPhone|iPad/.test(ua)
-            ? 'iOS'
-            : /Android/.test(ua)
-              ? 'Android'
-              : /Linux/.test(ua)
-                ? 'Linux'
-                : 'Unknown OS';
-
-    return `${browser} on ${os}`;
-}
 </script>
 
 <template>
@@ -87,7 +57,7 @@ function deviceLabel(ua: string | null): string {
                         </span>
                     </p>
                     <p class="mt-0.5 truncate text-xs text-muted-foreground">
-                        {{ deviceLabel(event.user_agent) }} ·
+                        {{ event.device }} ·
                         {{ event.ip_address ?? 'Unknown IP' }}
                     </p>
                 </div>
