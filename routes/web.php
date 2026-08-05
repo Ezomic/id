@@ -4,6 +4,7 @@ use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\Admin\AccessAuditController;
 use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestController;
 use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
@@ -74,6 +75,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
     Route::get('access-audit', [AccessAuditController::class, 'index'])->name('access-audit.index');
+
+    Route::get('failed-sign-ins', [FailedSignInController::class, 'index'])->name('failed-sign-ins.index');
 });
 
 require __DIR__.'/settings.php';

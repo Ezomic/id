@@ -12,8 +12,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property int|null $user_id
  * @property string $method
+ * @property string $outcome
  * @property string|null $ip_address
  * @property string|null $network
  * @property string|null $user_agent
@@ -21,12 +22,16 @@ use Illuminate\Support\Carbon;
  * @property string $device_fingerprint
  * @property Carbon|null $created_at
  */
-#[Fillable(['user_id', 'method', 'ip_address', 'network', 'user_agent', 'application', 'device_fingerprint'])]
+#[Fillable(['user_id', 'method', 'outcome', 'ip_address', 'network', 'user_agent', 'application', 'device_fingerprint'])]
 class SignInEvent extends Model
 {
     use MassPrunable;
 
     public const UPDATED_AT = null;
+
+    public const SUCCESS = 'success';
+
+    public const FAILURE = 'failure';
 
     /**
      * The history page only ever reads back the most recent 50 rows, so keeping
