@@ -25,6 +25,7 @@ use Laravel\Passport\HasApiTokens;
  * @property bool $is_admin
  * @property string|null $login_code_hash
  * @property Carbon|null $login_code_expires_at
+ * @property int $login_code_attempts
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -103,6 +104,7 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'login_code_expires_at' => 'datetime',
+            'login_code_attempts' => 'integer',
             'is_admin' => 'boolean',
         ];
     }
