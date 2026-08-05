@@ -22,6 +22,9 @@ use Laravel\Passport\HasApiTokens;
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property string|null $pending_email
+ * @property string|null $pending_email_token
+ * @property Carbon|null $pending_email_expires_at
  * @property bool $is_admin
  * @property string|null $login_code_hash
  * @property Carbon|null $login_code_expires_at
@@ -31,7 +34,7 @@ use Laravel\Passport\HasApiTokens;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'email', 'is_admin'])]
-#[Hidden(['login_code_hash', 'remember_token'])]
+#[Hidden(['login_code_hash', 'pending_email_token', 'remember_token'])]
 class User extends Authenticatable implements OAuthenticatable, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -103,6 +106,7 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'pending_email_expires_at' => 'datetime',
             'login_code_expires_at' => 'datetime',
             'login_code_attempts' => 'integer',
             'is_admin' => 'boolean',

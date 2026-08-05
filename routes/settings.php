@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\EmailChangeController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
@@ -13,6 +14,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('settings/profile/email/{token}', [EmailChangeController::class, 'confirm'])->name('profile.email.confirm');
+    Route::delete('settings/profile/email', [EmailChangeController::class, 'cancel'])->name('profile.email.cancel');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
 
