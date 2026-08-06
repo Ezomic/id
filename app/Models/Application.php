@@ -19,12 +19,13 @@ use Illuminate\Support\Str;
  * @property string|null $launch_url
  * @property string|null $category
  * @property string|null $oauth_client_id
+ * @property string|null $logout_secret
  * @property bool $active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read OAuthClient|null $oauthClient
  */
-#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'category', 'oauth_client_id', 'active'])]
+#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'category', 'oauth_client_id', 'logout_secret', 'active'])]
 class Application extends Model
 {
     /**
@@ -105,6 +106,24 @@ class Application extends Model
         $chosen ??= reset($callbacks);
 
         return substr($chosen, 0, -strlen($suffix)).'/auth/sso/redirect';
+    }
+
+    /**
+     * Where to POST a back-channel logout. Same convention as ssoLaunchUrl():
+     * apps using the id-client package register a `/auth/sso/callback` redirect
+     * URI and get the sibling logout endpoint for free.
+     */
+    public function logoutUrl(): ?string
+    {
+        $suffix = '/auth/sso/callback';
+
+        foreach ($this->redirectUris() as $uri) {
+            if (str_ends_with($uri, $suffix)) {
+                return substr($uri, 0, -strlen($suffix)).'/auth/sso/logout';
+            }
+        }
+
+        return null;
     }
 
     public function glyph(): string

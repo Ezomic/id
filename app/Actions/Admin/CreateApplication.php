@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Admin;
 
 use App\Models\Application;
+use Illuminate\Support\Str;
 use Laravel\Passport\ClientRepository;
 
 class CreateApplication
@@ -15,7 +16,7 @@ class CreateApplication
      * Register a workflow app as a confidential auth-code + PKCE OAuth client.
      *
      * @param  array<string, mixed>  $data
-     * @return array{application: Application, client_id: string, client_secret: string}
+     * @return array{application: Application, client_id: string, client_secret: string, logout_secret: string}
      */
     public function handle(array $data): array
     {
@@ -50,6 +51,7 @@ class CreateApplication
             'launch_url' => $data['launch_url'] ?? null,
             'category' => $data['category'] ?? null,
             'oauth_client_id' => $client->getKey(),
+            'logout_secret' => Str::random(64),
             'active' => $data['active'] ?? true,
         ]);
 
@@ -59,6 +61,7 @@ class CreateApplication
             'application' => $application,
             'client_id' => is_scalar($client->getKey()) ? (string) $client->getKey() : '',
             'client_secret' => is_string($client->plainSecret) ? $client->plainSecret : '',
+            'logout_secret' => (string) $application->logout_secret,
         ];
     }
 

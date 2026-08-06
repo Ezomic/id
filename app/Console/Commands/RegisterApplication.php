@@ -53,6 +53,7 @@ class RegisterApplication extends Command
         $this->line('Update the client app .env:');
         $this->line('  THIJSSENSOFTWARE_ID_CLIENT_ID='.$application->oauth_client_id);
         $this->line('  THIJSSENSOFTWARE_ID_CLIENT_SECRET='.$secret);
+        $this->line('  THIJSSENSOFTWARE_ID_LOGOUT_SECRET='.$application->fresh()?->logout_secret);
 
         return self::SUCCESS;
     }
@@ -86,6 +87,7 @@ class RegisterApplication extends Command
         $this->line('Add these to the client app .env:');
         $this->line('  THIJSSENSOFTWARE_ID_CLIENT_ID='.$result['client_id']);
         $this->line('  THIJSSENSOFTWARE_ID_CLIENT_SECRET='.$result['client_secret']);
+        $this->line('  THIJSSENSOFTWARE_ID_LOGOUT_SECRET='.$result['logout_secret']);
 
         return self::SUCCESS;
     }
