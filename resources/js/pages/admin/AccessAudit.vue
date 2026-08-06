@@ -73,6 +73,10 @@ function describe(audit: Audit): string {
             return `disabled ${app}`;
         case 'app_enable':
             return `enabled ${app}`;
+        case 'force_sign_out':
+            return `signed ${subject} out everywhere`;
+        case 'disconnect':
+            return `disconnected ${subject} from ${app}`;
         default:
             return audit.action;
     }

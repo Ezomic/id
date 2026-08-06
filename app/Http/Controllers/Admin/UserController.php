@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Access\ConnectedApplications;
 use App\Actions\Access\RevokeTokensForLostAccess;
+use App\Actions\Access\SignOutEverywhere;
 use App\Actions\Admin\CreateUser;
 use App\Actions\Admin\SetApplicationAccess;
 use App\Http\Controllers\Controller;
@@ -11,7 +13,10 @@ use App\Http\Requests\Admin\UpdateAccessRequest;
 use App\Models\AccessAudit;
 use App\Models\Application;
 use App\Models\User;
+use App\Services\DeviceFingerprint;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,6 +37,41 @@ class UserController extends Controller
                 ]),
             'applications' => Application::orderBy('name')->get(['id', 'name', 'slug', 'active']),
         ]);
+    }
+
+    public function show(
+        User $user,
+        ConnectedApplications $connectedApplications,
+        DeviceFingerprint $fingerprints,
+    ): Response {
+        return Inertia::render('admin/UserDetail', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_admin' => $user->is_admin,
+            ],
+            'sessions' => DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->orderByDesc('last_activity')
+                ->get()
+                ->map(fn (object $session): array => [
+                    'id' => $session->id,
+                    'ip_address' => $session->ip_address,
+                    'device' => $fingerprints->label(is_string($session->user_agent) ? $session->user_agent : null),
+                    'last_active_diff' => CarbonImmutable::createFromTimestamp(is_numeric($session->last_activity) ? (int) $session->last_activity : 0)->diffForHumans(),
+                ])
+                ->values()
+                ->all(),
+            'connections' => $connectedApplications->handle($user),
+        ]);
+    }
+
+    public function signOutEverywhere(User $user, SignOutEverywhere $signOut): RedirectResponse
+    {
+        $signOut->handle($user);
+
+        return back()->with('status', 'Signed out everywhere and revoked all tokens.');
     }
 
     public function store(StoreUserRequest $request, CreateUser $createUser): RedirectResponse

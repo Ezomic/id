@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Access\ConnectedApplications;
 use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -16,9 +17,10 @@ class SecurityController extends Controller
     /**
      * Show the user's security settings page.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request, ConnectedApplications $connectedApplications): Response
     {
         return Inertia::render('settings/Security', [
+            'connections' => $connectedApplications->handle($this->currentUser($request)),
             'newRecoveryCodes' => $request->session()->get('recovery_codes'),
             'unusedRecoveryCodes' => $this->currentUser($request)->recoveryCodes()->whereNull('used_at')->count(),
             'canManagePasskeys' => Features::canManagePasskeys(),
