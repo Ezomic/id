@@ -67,6 +67,12 @@ function describe(audit: Audit): string {
             return `granted ${app} to group ${group}`;
         case 'group_app_revoke':
             return `revoked ${app} from group ${group}`;
+        case 'client_secret_rotate':
+            return `rotated the OAuth secret for ${app}`;
+        case 'app_disable':
+            return `disabled ${app}`;
+        case 'app_enable':
+            return `enabled ${app}`;
         default:
             return audit.action;
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\CreateApplication;
+use App\Actions\Admin\RotateClientSecret;
 use App\Actions\Admin\UpdateApplication;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreApplicationRequest;
@@ -62,5 +63,23 @@ class ApplicationController extends Controller
         $updateApplication->handle($application, $request->validated());
 
         return back()->with('status', 'Application saved.');
+    }
+
+    public function rotateSecret(Application $application, RotateClientSecret $rotateSecret): RedirectResponse
+    {
+        $secret = $rotateSecret->handle($application);
+
+        if ($secret === null) {
+            return back()->withErrors(['secret' => 'This application has no OAuth client to rotate.']);
+        }
+
+        // Reuses the same one-time reveal the create flow uses; the plaintext
+        // exists nowhere else.
+        return back()->with('createdClient', [
+            'name' => $application->name,
+            'client_id' => $application->oauth_client_id,
+            'client_secret' => $secret,
+            'rotated' => true,
+        ]);
     }
 }
