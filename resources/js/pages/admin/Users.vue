@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -15,8 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { index as usersIndex } from '@/routes/admin/users';
-import { store } from '@/routes/admin/users';
+import { show, store, index as usersIndex } from '@/routes/admin/users';
 import { update as updateAccess } from '@/routes/admin/users/access';
 
 interface Application {
@@ -194,15 +193,22 @@ function saveAccess(user: AdminUser) {
                                 {{ user.email }}
                             </p>
                         </div>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            :disabled="savingAccess[user.id]"
-                            @click="saveAccess(user)"
-                        >
-                            <Spinner v-if="savingAccess[user.id]" />
-                            Save access
-                        </Button>
+                        <div class="flex items-center gap-2">
+                            <Link :href="show(user.id)">
+                                <Button size="sm" variant="ghost">
+                                    Sessions &amp; apps
+                                </Button>
+                            </Link>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                :disabled="savingAccess[user.id]"
+                                @click="saveAccess(user)"
+                            >
+                                <Spinner v-if="savingAccess[user.id]" />
+                                Save access
+                            </Button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <Label
