@@ -69,6 +69,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
     Route::put('applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
+    Route::post('applications/{application}/rotate-secret', [ApplicationController::class, 'rotateSecret'])->name('applications.rotate-secret');
 
     Route::get('access-requests', [AdminAccessRequestController::class, 'index'])->name('access-requests.index');
     Route::post('access-requests/{accessRequest}/approve', [AdminAccessRequestController::class, 'approve'])->name('access-requests.approve');

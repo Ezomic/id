@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import Heading from '@/components/Heading.vue';
@@ -24,7 +24,12 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
-import { index as appsIndex, store, update } from '@/routes/admin/applications';
+import {
+    index as appsIndex,
+    rotateSecret,
+    store,
+    update,
+} from '@/routes/admin/applications';
 
 interface ManagedApp {
     id: number;
@@ -188,7 +193,9 @@ const createdClient = ref<{
     name: string;
     client_id: string;
     client_secret: string;
+    rotated?: boolean;
 } | null>(null);
+const rotating = ref(false);
 
 const createForm = useForm<{
     name: string;
@@ -216,6 +223,35 @@ function openRegister() {
     createdClient.value = null;
     regStep.value = 'form';
     registerOpen.value = true;
+}
+
+function rotate() {
+    if (editingId.value === null) {
+        return;
+    }
+
+    rotating.value = true;
+
+    router.post(
+        rotateSecret(editingId.value).url,
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                const flashed = page.props.flash?.createdClient ?? null;
+
+                if (flashed) {
+                    createdClient.value = flashed;
+                    regStep.value = 'done';
+                    editOpen.value = false;
+                    registerOpen.value = true;
+                }
+            },
+            onFinish: () => {
+                rotating.value = false;
+            },
+        },
+    );
 }
 
 function submitRegister() {
@@ -607,6 +643,15 @@ function submitRegister() {
             <SheetFooter
                 class="flex-row justify-end gap-2 border-t border-border"
             >
+                <Button
+                    variant="ghost"
+                    class="mr-auto text-destructive"
+                    :disabled="rotating"
+                    @click="rotate"
+                >
+                    <Spinner v-if="rotating" />
+                    Rotate secret
+                </Button>
                 <Button variant="outline" @click="editOpen = false"
                     >Cancel</Button
                 >
@@ -734,12 +779,22 @@ function submitRegister() {
             <template v-else>
                 <DialogHeader>
                     <DialogTitle
-                        >{{ createdClient?.name }} is registered</DialogTitle
+                        >{{ createdClient?.name }}
+                        {{
+                            createdClient?.rotated
+                                ? 'has a new secret'
+                                : 'is registered'
+                        }}</DialogTitle
                     >
                     <DialogDescription>
                         Copy these into the app's
                         <span class="font-mono text-xs">.env</span>. The secret
                         is shown once.
+                        <template v-if="createdClient?.rotated">
+                            Every token issued under the old secret has been
+                            revoked, so the app stays signed out until it is
+                            redeployed.
+                        </template>
                     </DialogDescription>
                 </DialogHeader>
                 <div class="space-y-3 py-2">
