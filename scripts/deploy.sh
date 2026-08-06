@@ -133,9 +133,21 @@ ok "Permissions set"
 
 step "Ensuring the scheduler cron entry exists"
 # Nothing has ever installed this, so the schedule in routes/console.php would
-# never fire and the Passport tables would grow forever. Idempotent: the entry
-# is keyed on APP_DIR, so re-running the deploy never duplicates it.
-CRON_LINE="* * * * * cd $APP_DIR && $PHP artisan schedule:run >> /dev/null 2>&1"
+# never fire and the Passport tables would grow forever.
+#
+# Matches the convention every other app on this droplet uses:
+#   sleep N     eighteen apps must not all wake on the same second
+#   umask 002   the scheduler runs as `deploy` but php-fpm reads as `www-data`,
+#               so anything it writes has to stay group-writable, which is the
+#               same invariant the permissions step above protects
+#
+# Idempotent: keyed on APP_DIR, so re-running the deploy never duplicates it.
+#
+# Note: deploy.sh replaces itself during "Pulling from origin/main", but bash
+# has already buffered the copy it is executing. A change to this block
+# therefore takes effect on the *next* deploy, not the one that introduces it.
+CRON_STAGGER="${CRON_STAGGER:-50}"
+CRON_LINE="* * * * * sleep $CRON_STAGGER; umask 002; cd $APP_DIR && $PHP artisan schedule:run >> /dev/null 2>&1"
 if crontab -l 2>/dev/null | grep -Fq "cd $APP_DIR && $PHP artisan schedule:run"; then
   ok "Cron entry already present"
 else
