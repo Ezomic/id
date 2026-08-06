@@ -55,6 +55,7 @@ class ApplicationController extends Controller
             'name' => $result['application']->name,
             'client_id' => $result['client_id'],
             'client_secret' => $result['client_secret'],
+            'logout_secret' => $result['logout_secret'],
         ]);
     }
 
@@ -74,11 +75,13 @@ class ApplicationController extends Controller
         }
 
         // Reuses the same one-time reveal the create flow uses; the plaintext
-        // exists nowhere else.
+        // exists nowhere else. The logout secret is rolled by the same action,
+        // so it has to be shown here too or single logout silently breaks.
         return back()->with('createdClient', [
             'name' => $application->name,
             'client_id' => $application->oauth_client_id,
             'client_secret' => $secret,
+            'logout_secret' => $application->fresh()?->logout_secret,
             'rotated' => true,
         ]);
     }

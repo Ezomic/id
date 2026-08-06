@@ -193,6 +193,7 @@ const createdClient = ref<{
     name: string;
     client_id: string;
     client_secret: string;
+    logout_secret: string;
     rotated?: boolean;
 } | null>(null);
 const rotating = ref(false);
@@ -791,9 +792,10 @@ function submitRegister() {
                         <span class="font-mono text-xs">.env</span>. The secret
                         is shown once.
                         <template v-if="createdClient?.rotated">
-                            Every token issued under the old secret has been
-                            revoked, so the app stays signed out until it is
-                            redeployed.
+                            Both secrets changed and every token issued under
+                            the old one has been revoked, so the app stays
+                            signed out, and single logout stays broken, until it
+                            is redeployed with both values.
                         </template>
                     </DialogDescription>
                 </DialogHeader>
@@ -807,6 +809,10 @@ function submitRegister() {
                             {
                                 k: 'THIJSSENSOFTWARE_ID_CLIENT_SECRET',
                                 v: createdClient?.client_secret,
+                            },
+                            {
+                                k: 'THIJSSENSOFTWARE_ID_LOGOUT_SECRET',
+                                v: createdClient?.logout_secret,
                             },
                         ]"
                         :key="cred.k"

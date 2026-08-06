@@ -115,6 +115,40 @@ it('lets an admin rotate from the applications screen', function () {
     expect(AccessAudit::where('action', 'client_secret_rotate')->where('application_id', $application->id)->exists())->toBeTrue();
 });
 
+it('reveals the logout secret when rotating', function () {
+    [$application] = registeredApp();
+    $admin = User::factory()->admin()->create();
+    $before = $application->logout_secret;
+
+    $response = $this->actingAs($admin)
+        ->post(route('admin.applications.rotate-secret', $application))
+        ->assertRedirect();
+
+    $flashed = $response->getSession()->get('createdClient');
+
+    // Without this the rotation silently invalidates a working logout secret
+    // and never shows the replacement, so single logout breaks with no way to
+    // recover the value from the UI.
+    expect($flashed['logout_secret'])->not->toBeNull()
+        ->and($flashed['logout_secret'])->not->toBe($before)
+        ->and($flashed['logout_secret'])->toBe($application->fresh()?->logout_secret);
+});
+
+it('reveals the logout secret when registering', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('admin.applications.store'), [
+        'name' => 'Scratch',
+        'slug' => 'scratch',
+        'redirect_uri' => 'https://scratch.test/auth/sso/callback',
+    ])->assertRedirect();
+
+    $flashed = $response->getSession()->get('createdClient');
+
+    expect($flashed['logout_secret'])->not->toBeNull()
+        ->and($flashed['logout_secret'])->toBe(Application::where('slug', 'scratch')->value('logout_secret'));
+});
+
 it('keeps rotation away from non-admins', function () {
     [$application] = registeredApp();
 

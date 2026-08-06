@@ -24,6 +24,8 @@ declare module '@inertiajs/core' {
                     name: string;
                     client_id: string;
                     client_secret: string;
+                    logout_secret: string;
+                    rotated?: boolean;
                 } | null;
             };
             sidebarOpen: boolean;
