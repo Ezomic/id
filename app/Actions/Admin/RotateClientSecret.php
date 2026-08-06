@@ -7,6 +7,7 @@ namespace App\Actions\Admin;
 use App\Actions\Access\RevokeClientTokens;
 use App\Models\AccessAudit;
 use App\Models\Application;
+use Illuminate\Support\Str;
 use Laravel\Passport\ClientRepository;
 
 final class RotateClientSecret
@@ -33,6 +34,10 @@ final class RotateClientSecret
         }
 
         $this->clients->regenerateSecret($client);
+
+        // The back-channel logout secret is the app's other shared credential;
+        // rotating one and not the other would be a half-rotation.
+        $application->forceFill(['logout_secret' => Str::random(64)])->save();
 
         // Tokens obtained with the old secret would otherwise outlive it by up
         // to 30 days, which would make the rotation pointless.

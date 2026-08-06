@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Listeners\PropagateLogout;
 use App\Listeners\RecordSignIn;
 use App\Models\OAuthClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -32,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePassport();
 
         Event::listen(Login::class, RecordSignIn::class);
+        Event::listen(Logout::class, PropagateLogout::class);
     }
 
     /**

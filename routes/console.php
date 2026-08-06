@@ -16,3 +16,7 @@ Schedule::command('passport:purge')->daily();
 Schedule::command('model:prune', ['--model' => [SignInEvent::class]])->daily();
 
 Schedule::command('id:prune-login-codes')->hourly();
+
+// A consumer that was down when someone signed out is still holding a live
+// session until this lands.
+Schedule::command('id:retry-logout-notifications')->everyFiveMinutes();

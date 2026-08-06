@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\RecordAuthorizedClient;
+
 return [
 
     /*
@@ -15,7 +17,7 @@ return [
 
     'guard' => 'web',
 
-    'middleware' => [],
+    'middleware' => [RecordAuthorizedClient::class],
 
     /*
     |--------------------------------------------------------------------------
