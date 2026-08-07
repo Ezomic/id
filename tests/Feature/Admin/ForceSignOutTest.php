@@ -2,8 +2,11 @@
 
 use App\Models\AccessAudit;
 use App\Models\Application;
+use App\Models\AuthorizedClient;
+use App\Models\LogoutNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Passport\ClientRepository;
@@ -198,4 +201,94 @@ it('cannot disconnect on behalf of another user', function () {
     $this->actingAs($user)->delete(route('connections.destroy', $zero));
 
     expect(Token::where('user_id', $other->id)->count())->toBe(1);
+});
+
+it('tells every consumer the user was signed out', function () {
+    Http::fake();
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    [$zero] = connectedApp($user, 'zero');
+    [$billr] = connectedApp($user, 'billr');
+
+    // The authorizations a real sign-in would have left behind.
+    foreach ([$zero, $billr] as $application) {
+        AuthorizedClient::create([
+            'user_id' => $user->id,
+            'sso_session_id' => 'the-users-session',
+            'oauth_client_id' => $application->oauth_client_id,
+        ]);
+    }
+    $zero->forceFill(['logout_secret' => Str::random(64)])->save();
+    $billr->forceFill(['logout_secret' => Str::random(64)])->save();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.sign-out', $user))
+        ->assertRedirect();
+
+    expect(LogoutNotification::where('user_id', $user->id)->count())->toBe(2);
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+    Http::assertSent(fn ($request) => $request->url() === 'https://billr.test/auth/sso/logout');
+});
+
+it('covers every session of the target user, not just one', function () {
+    Http::fake();
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    [$zero] = connectedApp($user, 'zero');
+    $zero->forceFill(['logout_secret' => Str::random(64)])->save();
+
+    // Same app authorized from two different ID sessions, as a laptop and a
+    // phone would produce.
+    foreach (['laptop-session', 'phone-session'] as $session) {
+        AuthorizedClient::create([
+            'user_id' => $user->id,
+            'sso_session_id' => $session,
+            'oauth_client_id' => $zero->oauth_client_id,
+        ]);
+    }
+
+    $this->actingAs($admin)->post(route('admin.users.sign-out', $user));
+
+    expect(AuthorizedClient::where('user_id', $user->id)->count())->toBe(0);
+});
+
+it('does not touch the acting admin\'s own authorizations', function () {
+    Http::fake();
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    [$zero] = connectedApp($user, 'zero');
+    $zero->forceFill(['logout_secret' => Str::random(64)])->save();
+
+    AuthorizedClient::create([
+        'user_id' => $user->id,
+        'sso_session_id' => 'target-session',
+        'oauth_client_id' => $zero->oauth_client_id,
+    ]);
+    AuthorizedClient::create([
+        'user_id' => $admin->id,
+        'sso_session_id' => 'admin-session',
+        'oauth_client_id' => $zero->oauth_client_id,
+    ]);
+
+    $this->actingAs($admin)->post(route('admin.users.sign-out', $user));
+
+    expect(AuthorizedClient::where('user_id', $user->id)->count())->toBe(0)
+        ->and(AuthorizedClient::where('user_id', $admin->id)->count())->toBe(1);
+});
+
+it('signs out cleanly when the user has no authorizations', function () {
+    Http::fake();
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($admin)
+        ->post(route('admin.users.sign-out', $user))
+        ->assertRedirect();
+
+    expect(LogoutNotification::count())->toBe(0);
+    Http::assertNothingSent();
 });
