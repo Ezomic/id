@@ -25,6 +25,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string|null $pending_email
  * @property string|null $pending_email_token
  * @property Carbon|null $pending_email_expires_at
+ * @property Carbon|null $recovery_codes_acknowledged_at
  * @property bool $is_admin
  * @property string|null $login_code_hash
  * @property Carbon|null $login_code_expires_at
@@ -74,6 +75,18 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     }
 
     /**
+     * True when codes exist that the user has never confirmed seeing. The
+     * plaintext lives only in the session, so an unacknowledged set is very
+     * possibly one nobody can read any more, which is why this has to prompt
+     * rather than sit quietly.
+     */
+    public function hasUnacknowledgedRecoveryCodes(): bool
+    {
+        return $this->recovery_codes_acknowledged_at === null
+            && $this->recoveryCodes()->exists();
+    }
+
+    /**
      * Groups this user belongs to. Group grants are one source of app access.
      *
      * @return BelongsToMany<Group, $this>
@@ -118,6 +131,7 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'pending_email_expires_at' => 'datetime',
+            'recovery_codes_acknowledged_at' => 'datetime',
             'login_code_expires_at' => 'datetime',
             'login_code_attempts' => 'integer',
             'is_admin' => 'boolean',

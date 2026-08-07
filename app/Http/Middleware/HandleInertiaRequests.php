@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,6 +41,10 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                // Codes the user has never confirmed seeing are worse than no
+                // codes: they believe recovery is covered when it is not.
+                'unsavedRecoveryCodes' => $request->user() instanceof User
+                    && $request->user()->hasUnacknowledgedRecoveryCodes(),
             ],
             'flash' => [
                 'status' => $request->session()->get('status'),

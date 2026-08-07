@@ -7,6 +7,7 @@ import { acknowledge, regenerate } from '@/routes/recovery-codes';
 
 export interface Props {
     newRecoveryCodes?: string[] | null;
+    recoveryCodesUnsaved: boolean;
     unusedRecoveryCodes: number;
 }
 
@@ -21,6 +22,7 @@ const props = defineProps<Props>();
             description="One-time codes that sign you in when you can't reach your inbox and don't have a passkey"
         />
 
+        <!-- The plaintext is in hand: this is the only moment it can be read. -->
         <Card v-if="props.newRecoveryCodes?.length">
             <CardContent class="space-y-4 p-6">
                 <p class="text-sm">
@@ -40,6 +42,35 @@ const props = defineProps<Props>();
                         data-test="acknowledge-codes"
                     >
                         I've saved these
+                    </Button>
+                </Form>
+            </CardContent>
+        </Card>
+
+        <!--
+            Codes exist but were never confirmed and the plaintext is gone with
+            the session that held it. They cannot be recovered, only replaced.
+        -->
+        <Card
+            v-else-if="props.recoveryCodesUnsaved"
+            class="border-destructive/40"
+        >
+            <CardContent class="space-y-4 p-6">
+                <p class="text-sm font-semibold text-destructive">
+                    You have recovery codes you never saved
+                </p>
+                <p class="text-sm text-muted-foreground">
+                    They were generated but the copy you could read is gone, so
+                    they can't be shown again. Generate a fresh set and save it,
+                    otherwise you have no way back in if you lose access to your
+                    email.
+                </p>
+                <Form v-bind="regenerate.form()" v-slot="{ processing }">
+                    <Button
+                        :disabled="processing"
+                        data-test="replace-unsaved-codes"
+                    >
+                        Generate a set I can save
                     </Button>
                 </Form>
             </CardContent>
