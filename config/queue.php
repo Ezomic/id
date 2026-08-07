@@ -13,7 +13,12 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'database'),
+    // sync, not database. Nothing on this droplet runs a queue worker for id,
+    // so a dispatched job would be written and never executed, with no error
+    // anywhere. Running inline is slower and correct; the alternative is silent.
+    // If a real background need appears, provision a worker in the same way the
+    // other apps do and change this deliberately.
+    'default' => env('QUEUE_CONNECTION', 'sync'),
 
     /*
     |--------------------------------------------------------------------------
