@@ -185,3 +185,82 @@ it('never stores a code in a form it could be read back from', function () {
         expect($stored)->not->toContain(str_replace('-', '', $code));
     }
 });
+
+it('keeps prompting until the codes are acknowledged', function () {
+    Notification::fake();
+    [$user] = userWithCodes();
+
+    expect($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeTrue();
+
+    $this->actingAs($user)
+        ->get(route('security.edit'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('recoveryCodesUnsaved', true));
+});
+
+it('stops prompting once acknowledged', function () {
+    Notification::fake();
+    [$user] = userWithCodes();
+
+    $this->actingAs($user)->delete(route('recovery-codes.acknowledge'))->assertRedirect();
+
+    expect($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeFalse()
+        ->and($user->fresh()->recovery_codes_acknowledged_at)->not->toBeNull();
+});
+
+it('does not count merely opening the page as acknowledgement', function () {
+    Notification::fake();
+    [$user] = userWithCodes();
+
+    // The plaintext is gone the moment the session ends, so rendering the page
+    // proves nothing about whether anyone wrote the codes down.
+    $this->actingAs($user)->get(route('security.edit'))->assertOk();
+
+    expect($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeTrue();
+});
+
+it('starts prompting again after regenerating', function () {
+    Notification::fake();
+    [$user] = userWithCodes();
+
+    $this->actingAs($user)->delete(route('recovery-codes.acknowledge'));
+    expect($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeFalse();
+
+    $this->actingAs($user)->post(route('recovery-codes.regenerate'));
+
+    expect($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeTrue();
+});
+
+it('shares the unsaved state so it can be surfaced anywhere', function () {
+    Notification::fake();
+    [$user] = userWithCodes();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('auth.unsavedRecoveryCodes', true));
+
+    $this->actingAs($user)->delete(route('recovery-codes.acknowledge'));
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('auth.unsavedRecoveryCodes', false));
+});
+
+it('offers a replacement set when the plaintext was never saved', function () {
+    Notification::fake();
+    [$user, $codes] = userWithCodes();
+
+    // Losing the session that held them is the case ID-58 exists for: the codes
+    // are real, unusable, and the account looks protected.
+    $this->actingAs($user)->post(route('recovery-codes.regenerate'))->assertRedirect();
+
+    $this->post(route('logout'));
+
+    $this->post(route('login.recovery-code'), ['email' => $user->email, 'code' => $codes[0]])
+        ->assertSessionHasErrors('code');
+});
+
+it('does not prompt an account with no codes at all', function () {
+    $user = User::factory()->create();
+
+    expect($user->hasUnacknowledgedRecoveryCodes())->toBeFalse();
+});

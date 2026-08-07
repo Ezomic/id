@@ -22,6 +22,7 @@ class SecurityController extends Controller
         return Inertia::render('settings/Security', [
             'connections' => $connectedApplications->handle($this->currentUser($request)),
             'newRecoveryCodes' => $request->session()->get('recovery_codes'),
+            'recoveryCodesUnsaved' => $this->currentUser($request)->hasUnacknowledgedRecoveryCodes(),
             'unusedRecoveryCodes' => $this->currentUser($request)->recoveryCodes()->whereNull('used_at')->count(),
             'canManagePasskeys' => Features::canManagePasskeys(),
             'passkeys' => Features::canManagePasskeys()

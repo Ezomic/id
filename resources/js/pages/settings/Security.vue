@@ -37,6 +37,7 @@ defineOptions({
 
         <ManageRecoveryCodes
             :newRecoveryCodes="props.newRecoveryCodes"
+            :recoveryCodesUnsaved="props.recoveryCodesUnsaved"
             :unusedRecoveryCodes="props.unusedRecoveryCodes"
         />
 

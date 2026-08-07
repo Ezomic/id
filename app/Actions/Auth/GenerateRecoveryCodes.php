@@ -24,6 +24,7 @@ final class GenerateRecoveryCodes
     public function handle(User $user): array
     {
         $user->recoveryCodes()->delete();
+        $user->forceFill(['recovery_codes_acknowledged_at' => null])->save();
 
         $codes = [];
 

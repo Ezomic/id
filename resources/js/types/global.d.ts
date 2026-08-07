@@ -17,7 +17,7 @@ declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
-            auth: Auth;
+            auth: Auth & { unsavedRecoveryCodes: boolean };
             flash: {
                 status: string | null;
                 createdClient: {

@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
 import { Toaster } from '@/components/ui/sonner';
+import UnsavedRecoveryCodesBanner from '@/components/UnsavedRecoveryCodesBanner.vue';
 import type { BreadcrumbItem } from '@/types';
 
 type Props = {
@@ -20,6 +21,7 @@ withDefaults(defineProps<Props>(), {
         <AppSidebar />
         <AppContent variant="sidebar" class="overflow-x-hidden">
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />
+            <UnsavedRecoveryCodesBanner />
             <slot />
         </AppContent>
         <Toaster />
