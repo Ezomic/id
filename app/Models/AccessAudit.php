@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -24,7 +26,16 @@ use Illuminate\Support\Facades\Auth;
 #[Fillable(['actor_id', 'subject_user_id', 'application_id', 'group_id', 'action'])]
 class AccessAudit extends Model
 {
+    use MassPrunable;
+
     public const UPDATED_AT = null;
+
+    /**
+     * Deliberately long. This is the record of who granted whom access to what,
+     * which is the thing you want when reconstructing an incident months later,
+     * and it grows slowly enough that keeping it is cheap.
+     */
+    public const RETENTION_DAYS = 730;
 
     /**
      * Record an access change, stamped with the acting admin.
@@ -34,6 +45,14 @@ class AccessAudit extends Model
     public static function log(string $action, array $attributes): void
     {
         static::create([...$attributes, 'action' => $action, 'actor_id' => Auth::id()]);
+    }
+
+    /**
+     * @return Builder<static>
+     */
+    public function prunable(): Builder
+    {
+        return static::query()->where('created_at', '<', now()->subDays(self::RETENTION_DAYS));
     }
 
     /** @return BelongsTo<User, $this> */
