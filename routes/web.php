@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AccessRequestController as AdminAccessRequestCont
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
+use App\Http\Controllers\Admin\LogoutDeliveryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\RecoveryCodeController;
@@ -85,6 +86,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('access-audit', [AccessAuditController::class, 'index'])->name('access-audit.index');
 
     Route::get('failed-sign-ins', [FailedSignInController::class, 'index'])->name('failed-sign-ins.index');
+
+    Route::get('logout-deliveries', [LogoutDeliveryController::class, 'index'])->name('logout-deliveries.index');
+    Route::post('logout-deliveries/{logoutNotification}/retry', [LogoutDeliveryController::class, 'retry'])->name('logout-deliveries.retry');
 });
 
 require __DIR__.'/settings.php';
