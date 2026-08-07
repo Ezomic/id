@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\RecoveryCodeController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\SchedulerHealthController;
 use App\Models\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -32,6 +33,8 @@ Route::get('/', function () {
             ]),
     ]);
 })->name('home');
+
+Route::get('health/scheduler', SchedulerHealthController::class)->name('health.scheduler');
 
 Route::middleware('guest')->group(function () {
     Route::post('login/code', [LoginCodeController::class, 'send'])

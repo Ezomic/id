@@ -4,6 +4,7 @@ use App\Models\AccessAudit;
 use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\SignInEvent;
+use App\Services\SchedulerHeartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -14,6 +15,12 @@ Artisan::command('inspire', function () {
 
 // Seven consumer apps refreshing 15 minute access tokens fill the Passport
 // tables faster than anything else in this database.
+// Written every minute so an external check can tell a stopped scheduler from
+// a healthy one. Nothing else here proves the scheduler is alive.
+Schedule::call(fn () => app(SchedulerHeartbeat::class)->record())
+    ->everyMinute()
+    ->name('scheduler-heartbeat');
+
 Schedule::command('passport:purge')->daily();
 
 Schedule::command('model:prune', ['--model' => [
