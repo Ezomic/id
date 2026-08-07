@@ -1,15 +1,19 @@
 <?php
 
 use App\Models\Application;
+use App\Models\PortalLookup;
 use App\Models\User;
+use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
 
-function actingAsPortalClient(): void
+function actingAsPortalClient(string $name = 'Test Portal Client'): Client
 {
-    $client = app(ClientRepository::class)->createClientCredentialsGrantClient('Test Portal Client');
+    $client = app(ClientRepository::class)->createClientCredentialsGrantClient($name);
 
     Passport::actingAsClient($client);
+
+    return $client;
 }
 
 it('rejects requests without a client token', function () {
@@ -143,4 +147,53 @@ it('validates the email', function () {
     $this->postJson('/api/portal/apps', ['email' => 'not-an-email'])
         ->assertUnprocessable()
         ->assertJsonValidationErrorFor('email');
+});
+
+it('records every lookup against the calling client', function () {
+    $client = actingAsPortalClient();
+    $user = User::factory()->create();
+
+    $this->postJson('/api/portal/apps', ['email' => $user->email])->assertOk();
+
+    $lookup = PortalLookup::first();
+
+    expect($lookup)->not->toBeNull()
+        ->and($lookup->oauth_client_id)->toBe((string) $client->getKey())
+        ->and($lookup->subject_email)->toBe($user->email)
+        ->and($lookup->matched)->toBeTrue();
+});
+
+it('records a lookup that matched no account', function () {
+    actingAsPortalClient();
+
+    $this->postJson('/api/portal/apps', ['email' => 'nobody@example.com'])->assertOk();
+
+    // Recording the misses is the point: probing for accounts that do not exist
+    // is what enumeration looks like.
+    expect(PortalLookup::first()?->subject_email)->toBe('nobody@example.com')
+        ->and(PortalLookup::first()?->matched)->toBeFalse();
+});
+
+it('meters lookups per client', function () {
+    actingAsPortalClient();
+
+    foreach (range(1, 60) as $i) {
+        $this->postJson('/api/portal/apps', ['email' => "probe{$i}@example.com"])->assertOk();
+    }
+
+    $this->postJson('/api/portal/apps', ['email' => 'probe61@example.com'])->assertStatus(429);
+});
+
+it('does not let one client exhaust another client\'s allowance', function () {
+    actingAsPortalClient('First');
+
+    foreach (range(1, 60) as $i) {
+        $this->postJson('/api/portal/apps', ['email' => "probe{$i}@example.com"]);
+    }
+
+    $this->postJson('/api/portal/apps', ['email' => 'blocked@example.com'])->assertStatus(429);
+
+    actingAsPortalClient('Second');
+
+    $this->postJson('/api/portal/apps', ['email' => 'allowed@example.com'])->assertOk();
 });
