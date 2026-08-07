@@ -1,7 +1,16 @@
 name: Deploy to production
 
-# Manual deploys only. Production is deployed by hand over SSH; this workflow
-# is kept as a workflow_dispatch escape hatch and never triggers automatically.
+# DISABLED. This workflow is disabled on GitHub (`gh workflow list` shows
+# `disabled_manually`), so dispatching it returns HTTP 422 and nothing runs.
+# It is kept only as a record of what an automated deploy would do.
+#
+# Production is deployed by hand over SSH:
+#
+#   ssh -i ~/.ssh/id_ed25519_thijssensoftware_deploy root@165.22.203.180 \
+#     "sudo -u deploy bash -c 'cd /home/deploy/id && bash scripts/deploy.sh'"
+#
+# To bring this back, re-enable it with `gh workflow enable deploy.yml` and
+# delete this comment.
 on:
   workflow_dispatch:
 concurrency:
