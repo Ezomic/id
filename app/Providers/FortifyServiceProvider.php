@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Laravel\Fortify\Fortify;
+use Laravel\Passport\Guards\TokenGuard;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -34,6 +36,18 @@ class FortifyServiceProvider extends ServiceProvider
             $throttleKey = Str::transliterate(Str::lower($request->string('email')->value()).'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        // Keyed on the calling client, not the IP: the callers are seven
+        // server-side apps, so an IP limit would meter the droplet rather than
+        // the client, and one compromised secret would be bounded by nothing.
+        RateLimiter::for('portal-lookups', function (Request $request) {
+            $guard = Auth::guard('api');
+            $client = $guard instanceof TokenGuard ? $guard->client() : null;
+            $clientKey = $client?->getKey();
+            $key = is_scalar($clientKey) ? (string) $clientKey : (string) $request->ip();
+
+            return Limit::perMinute(60)->by('portal-lookups:'.$key);
         });
 
         RateLimiter::for('passkeys', function (Request $request) {
