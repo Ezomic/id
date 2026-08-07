@@ -5,6 +5,7 @@ import {
     Boxes,
     KeyRound,
     LayoutGrid,
+    RadioTower,
     ScrollText,
     ShieldAlert,
     Users,
@@ -29,6 +30,7 @@ import { index as adminAccessRequests } from '@/routes/admin/access-requests';
 import { index as adminApplications } from '@/routes/admin/applications';
 import { index as adminFailedSignIns } from '@/routes/admin/failed-sign-ins';
 import { index as adminGroups } from '@/routes/admin/groups';
+import { index as adminLogoutDeliveries } from '@/routes/admin/logout-deliveries';
 import { index as adminUsers } from '@/routes/admin/users';
 import { index as bookmarks } from '@/routes/bookmarks';
 import type { NavItem } from '@/types';
@@ -78,6 +80,11 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: 'Failed sign-ins',
                   href: adminFailedSignIns(),
                   icon: ShieldAlert,
+              },
+              {
+                  title: 'Logout deliveries',
+                  href: adminLogoutDeliveries(),
+                  icon: RadioTower,
               },
           ]
         : []),
