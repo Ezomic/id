@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\AccessAudit;
+use App\Models\AuthorizedClient;
+use App\Models\LogoutNotification;
 use App\Models\SignInEvent;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -13,7 +16,12 @@ Artisan::command('inspire', function () {
 // tables faster than anything else in this database.
 Schedule::command('passport:purge')->daily();
 
-Schedule::command('model:prune', ['--model' => [SignInEvent::class]])->daily();
+Schedule::command('model:prune', ['--model' => [
+    SignInEvent::class,
+    AccessAudit::class,
+    AuthorizedClient::class,
+    LogoutNotification::class,
+]])->daily();
 
 Schedule::command('id:prune-login-codes')->hourly();
 
