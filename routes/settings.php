@@ -21,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('settings/profile/email', [EmailChangeController::class, 'cancel'])->name('profile.email.cancel');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
+    Route::delete('settings/security/passkey-prompt', [SecurityController::class, 'dismissPasskeyPrompt'])->name('security.passkey-prompt.dismiss');
     Route::post('settings/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->name('recovery-codes.regenerate');
     Route::delete('settings/recovery-codes', [RecoveryCodeController::class, 'acknowledge'])->name('recovery-codes.acknowledge');
     Route::delete('settings/connections/{application}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
