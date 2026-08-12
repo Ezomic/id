@@ -6,6 +6,7 @@ use App\Actions\Access\ConnectedApplications;
 use App\Actions\Access\RevokeTokensForLostAccess;
 use App\Actions\Access\SignOutEverywhere;
 use App\Actions\Admin\CreateUser;
+use App\Actions\Admin\SetAdminRole;
 use App\Actions\Admin\SetApplicationAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
@@ -19,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class UserController extends Controller
 {
@@ -36,7 +38,19 @@ class UserController extends Controller
                     'application_ids' => $user->applications->pluck('id'),
                 ]),
             'applications' => Application::orderBy('name')->get(['id', 'name', 'slug', 'active']),
+            'adminCount' => User::where('is_admin', true)->count(),
         ]);
+    }
+
+    public function updateRole(User $user, SetAdminRole $setAdminRole): RedirectResponse
+    {
+        try {
+            $setAdminRole->handle($user, ! $user->is_admin);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['is_admin' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Role updated.');
     }
 
     public function show(
