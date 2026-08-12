@@ -70,6 +70,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('users/{user}/access', [UserController::class, 'updateAccess'])->name('users.access.update');
+    Route::put('users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
     Route::post('users/{user}/sign-out', [UserController::class, 'signOutEverywhere'])->name('users.sign-out');
 
     Route::get('applications', [ApplicationController::class, 'index'])->name('applications.index');

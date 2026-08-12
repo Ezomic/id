@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { show, store, index as usersIndex } from '@/routes/admin/users';
 import { update as updateAccess } from '@/routes/admin/users/access';
+import { update as updateRole } from '@/routes/admin/users/role';
 
 interface Application {
     id: number;
@@ -36,7 +37,12 @@ interface AdminUser {
 const props = defineProps<{
     users: AdminUser[];
     applications: Application[];
+    adminCount: number;
 }>();
+
+function toggleRole(user: AdminUser) {
+    router.put(updateRole(user.id).url, {}, { preserveScroll: true });
+}
 
 defineOptions({
     layout: {
@@ -175,6 +181,20 @@ function saveAccess(user: AdminUser) {
             </CardHeader>
             <CardContent class="flex flex-col gap-6">
                 <div
+                    v-if="props.adminCount < 2"
+                    class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm"
+                >
+                    <p class="font-semibold text-destructive">
+                        This estate has one administrator
+                    </p>
+                    <p class="mt-1 text-muted-foreground">
+                        If that account is lost, nothing can grant access to any
+                        app, register a client or rotate a secret, and the only
+                        way back is SSH. Promote a second admin below.
+                    </p>
+                </div>
+
+                <div
                     v-for="user in users"
                     :key="user.id"
                     class="flex flex-col gap-3 rounded-lg border p-4"
@@ -199,6 +219,17 @@ function saveAccess(user: AdminUser) {
                                     Sessions &amp; apps
                                 </Button>
                             </Link>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                @click="toggleRole(user)"
+                            >
+                                {{
+                                    user.is_admin
+                                        ? 'Revoke admin'
+                                        : 'Make admin'
+                                }}
+                            </Button>
                             <Button
                                 size="sm"
                                 variant="outline"
