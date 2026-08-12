@@ -45,6 +45,8 @@ class HandleInertiaRequests extends Middleware
                 // codes: they believe recovery is covered when it is not.
                 'unsavedRecoveryCodes' => $request->user() instanceof User
                     && $request->user()->hasUnacknowledgedRecoveryCodes(),
+                'needsPasskey' => $request->user() instanceof User
+                    && $request->user()->needsPasskeyPrompt(),
             ],
             'flash' => [
                 'status' => $request->session()->get('status'),

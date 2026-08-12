@@ -52,7 +52,7 @@ const usingRecovery = ref(props.recoveryMode ?? false);
                     type="email"
                     name="email"
                     required
-                    autocomplete="email"
+                    autocomplete="username webauthn"
                     placeholder="email@example.com"
                     :default-value="email"
                 />
@@ -110,7 +110,7 @@ const usingRecovery = ref(props.recoveryMode ?? false);
                     name="email"
                     required
                     autofocus
-                    autocomplete="email"
+                    autocomplete="username webauthn"
                     placeholder="email@example.com"
                     :default-value="email"
                 />

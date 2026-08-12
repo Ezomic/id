@@ -7,6 +7,7 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { usePasskeyAutofill } from '@/composables/usePasskeyAutofill';
 
 type Props = {
     routes?: {
@@ -32,6 +33,13 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
     onSuccess: (response) => {
         router.visit(response.redirect ?? '/dashboard');
     },
+});
+
+// Progressive enhancement alongside the button above, not a replacement for it.
+usePasskeyAutofill({
+    optionsUrl: props.routes?.options.url ?? '/passkeys/login/options',
+    submitUrl: props.routes?.submit.url ?? '/passkeys/login',
+    onSuccess: (redirect) => router.visit(redirect),
 });
 </script>
 

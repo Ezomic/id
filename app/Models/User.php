@@ -26,6 +26,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string|null $pending_email_token
  * @property Carbon|null $pending_email_expires_at
  * @property Carbon|null $recovery_codes_acknowledged_at
+ * @property Carbon|null $passkey_prompt_dismissed_at
  * @property bool $is_admin
  * @property string|null $login_code_hash
  * @property Carbon|null $login_code_expires_at
@@ -38,6 +39,8 @@ use Laravel\Passport\HasApiTokens;
 #[Hidden(['login_code_hash', 'pending_email_token', 'remember_token'])]
 class User extends Authenticatable implements OAuthenticatable, PasskeyUser
 {
+    public const PASSKEY_PROMPT_SNOOZE_DAYS = 30;
+
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable;
 
@@ -87,6 +90,26 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     }
 
     /**
+     * Whether to nudge this account towards enrolling a passkey.
+     *
+     * Nothing has ever asked, and the button lives on a settings page there is
+     * no reason to open, which is why production has zero passkeys and one
+     * account whose only way in is an emailed code. Dismissal is temporary
+     * rather than permanent: the risk does not go away because it was waved off
+     * once, but nagging every request is how a prompt gets ignored for good.
+     */
+    public function needsPasskeyPrompt(): bool
+    {
+        if ($this->passkeys()->exists()) {
+            return false;
+        }
+
+        $dismissed = $this->passkey_prompt_dismissed_at;
+
+        return $dismissed === null || $dismissed->lt(now()->subDays(self::PASSKEY_PROMPT_SNOOZE_DAYS));
+    }
+
+    /**
      * Groups this user belongs to. Group grants are one source of app access.
      *
      * @return BelongsToMany<Group, $this>
@@ -132,6 +155,7 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
             'email_verified_at' => 'datetime',
             'pending_email_expires_at' => 'datetime',
             'recovery_codes_acknowledged_at' => 'datetime',
+            'passkey_prompt_dismissed_at' => 'datetime',
             'login_code_expires_at' => 'datetime',
             'login_code_attempts' => 'integer',
             'is_admin' => 'boolean',

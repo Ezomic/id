@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Settings;
 use App\Actions\Access\ConnectedApplications;
 use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,6 +15,19 @@ use Laravel\Fortify\Features;
 class SecurityController extends Controller
 {
     use InteractsWithCurrentUser;
+
+    /**
+     * Snoozes the enrollment nudge rather than silencing it: an account with no
+     * passkey is still an account whose only way in is an emailed code.
+     */
+    public function dismissPasskeyPrompt(Request $request): RedirectResponse
+    {
+        $this->currentUser($request)
+            ->forceFill(['passkey_prompt_dismissed_at' => CarbonImmutable::now()])
+            ->save();
+
+        return back();
+    }
 
     /**
      * Show the user's security settings page.
