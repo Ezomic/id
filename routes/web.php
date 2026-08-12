@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LogoutDeliveryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginCodeController;
+use App\Http\Controllers\Auth\ReauthenticateController;
 use App\Http\Controllers\Auth\RecoveryCodeController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\DashboardController;
@@ -51,6 +52,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('reauthenticate', [ReauthenticateController::class, 'show'])->name('reauthenticate.show');
+    Route::post('reauthenticate', [ReauthenticateController::class, 'confirm'])
+        ->middleware('throttle:login')
+        ->name('reauthenticate.confirm');
+
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('portal/launch/{application}', [PortalController::class, 'launch'])->name('portal.launch');
@@ -70,13 +76,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('users/{user}/access', [UserController::class, 'updateAccess'])->name('users.access.update');
-    Route::put('users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
-    Route::post('users/{user}/sign-out', [UserController::class, 'signOutEverywhere'])->name('users.sign-out');
+    Route::put('users/{user}/role', [UserController::class, 'updateRole'])->middleware('reauth')->name('users.role.update');
+    Route::post('users/{user}/sign-out', [UserController::class, 'signOutEverywhere'])->middleware('reauth')->name('users.sign-out');
 
     Route::get('applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
-    Route::put('applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
-    Route::post('applications/{application}/rotate-secret', [ApplicationController::class, 'rotateSecret'])->name('applications.rotate-secret');
+    Route::put('applications/{application}', [ApplicationController::class, 'update'])->middleware('reauth')->name('applications.update');
+    Route::post('applications/{application}/rotate-secret', [ApplicationController::class, 'rotateSecret'])->middleware('reauth')->name('applications.rotate-secret');
 
     Route::get('access-requests', [AdminAccessRequestController::class, 'index'])->name('access-requests.index');
     Route::post('access-requests/{accessRequest}/approve', [AdminAccessRequestController::class, 'approve'])->name('access-requests.approve');

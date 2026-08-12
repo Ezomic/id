@@ -5,6 +5,8 @@ use App\Models\AccessAudit;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
+beforeEach(fn () => confirmSession());
+
 it('warns while there is only one administrator', function () {
     $admin = User::factory()->admin()->create();
     User::factory()->create();

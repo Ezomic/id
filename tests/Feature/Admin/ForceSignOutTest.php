@@ -13,6 +13,8 @@ use Laravel\Passport\ClientRepository;
 use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
 
+beforeEach(fn () => confirmSession());
+
 /**
  * @return array{0: Application, 1: array<string, mixed>}
  */

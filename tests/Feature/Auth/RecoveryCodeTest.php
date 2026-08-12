@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia;
 
+beforeEach(fn () => confirmSession());
+
 /**
  * @return array{0: User, 1: list<string>}
  */
