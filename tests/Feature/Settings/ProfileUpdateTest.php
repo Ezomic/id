@@ -64,6 +64,9 @@ class ProfileUpdateTest extends TestCase
     {
         $user = User::factory()->create();
 
+        // Deleting an account is behind the ID-68 step-up check.
+        $this->withSession(['auth.password_confirmed_at' => now()->unix()]);
+
         $response = $this
             ->actingAs($user)
             ->delete(route('profile.destroy'));

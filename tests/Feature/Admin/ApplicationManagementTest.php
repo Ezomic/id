@@ -4,6 +4,8 @@ use App\Actions\Admin\CreateApplication;
 use App\Models\Application;
 use App\Models\User;
 
+beforeEach(fn () => confirmSession());
+
 it('lets an admin register an application and reveals credentials once', function () {
     $admin = User::factory()->admin()->create();
 

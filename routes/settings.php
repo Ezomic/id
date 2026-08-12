@@ -15,14 +15,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->middleware('reauth')->name('profile.destroy');
 
     Route::get('settings/profile/email/{token}', [EmailChangeController::class, 'confirm'])->name('profile.email.confirm');
     Route::delete('settings/profile/email', [EmailChangeController::class, 'cancel'])->name('profile.email.cancel');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
     Route::delete('settings/security/passkey-prompt', [SecurityController::class, 'dismissPasskeyPrompt'])->name('security.passkey-prompt.dismiss');
-    Route::post('settings/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->name('recovery-codes.regenerate');
+    Route::post('settings/recovery-codes', [RecoveryCodeController::class, 'regenerate'])->middleware('reauth')->name('recovery-codes.regenerate');
     Route::delete('settings/recovery-codes', [RecoveryCodeController::class, 'acknowledge'])->name('recovery-codes.acknowledge');
     Route::delete('settings/connections/{application}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
 

@@ -17,6 +17,8 @@ type Props = {
     label?: string;
     loadingLabel?: string;
     separator?: string;
+    /** Conditional mediation belongs on sign-in, not on a re-auth prompt. */
+    autofill?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -36,11 +38,13 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
 });
 
 // Progressive enhancement alongside the button above, not a replacement for it.
-usePasskeyAutofill({
-    optionsUrl: props.routes?.options.url ?? '/passkeys/login/options',
-    submitUrl: props.routes?.submit.url ?? '/passkeys/login',
-    onSuccess: (redirect) => router.visit(redirect),
-});
+if (props.autofill !== false) {
+    usePasskeyAutofill({
+        optionsUrl: props.routes?.options.url ?? '/passkeys/login/options',
+        submitUrl: props.routes?.submit.url ?? '/passkeys/login',
+        onSuccess: (redirect) => router.visit(redirect),
+    });
+}
 </script>
 
 <template>

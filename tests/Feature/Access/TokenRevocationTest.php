@@ -9,6 +9,8 @@ use Laravel\Passport\ClientRepository;
 use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
 
+beforeEach(fn () => confirmSession());
+
 /**
  * Tokens are minted through the real authorization_code + PKCE flow rather than
  * inserted by hand, so these tests fail if revocation stops matching how tokens
