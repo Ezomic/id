@@ -33,6 +33,23 @@ class SignInHistoryController extends Controller
             ->values()
             ->all();
 
-        return Inertia::render('settings/SignInHistory', ['events' => $events]);
+        $user = $this->currentUser($request);
+        $current = $fingerprints->forUserAgent($request->userAgent());
+
+        return Inertia::render('settings/SignInHistory', [
+            'events' => $events,
+            'currentDeviceTrusted' => $user->trusts($current),
+            'trustedDevices' => $user->trustedDevices()
+                ->where('expires_at', '>', now())
+                ->get()
+                ->map(fn ($device): array => [
+                    'id' => $device->id,
+                    'label' => $device->label,
+                    'expires_diff' => $device->expires_at->diffForHumans(),
+                    'is_current' => $device->device_fingerprint === $current,
+                ])
+                ->values()
+                ->all(),
+        ]);
     }
 }

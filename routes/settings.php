@@ -7,6 +7,7 @@ use App\Http\Controllers\Settings\RecoveryCodeController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
 use App\Http\Controllers\Settings\SignInHistoryController;
+use App\Http\Controllers\Settings\TrustedDeviceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -31,6 +32,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('settings/sessions/{id}', [SessionController::class, 'destroy'])->name('sessions.destroy');
 
     Route::get('settings/sign-in-history', [SignInHistoryController::class, 'index'])->name('sign-in-history.edit');
+    Route::post('settings/trusted-devices', [TrustedDeviceController::class, 'store'])->name('trusted-devices.store');
+    Route::delete('settings/trusted-devices/{trustedDevice}', [TrustedDeviceController::class, 'destroy'])->name('trusted-devices.destroy');
 
     Route::get('settings/appearance', fn () => Inertia::render('settings/Appearance'))->name('appearance.edit');
 });

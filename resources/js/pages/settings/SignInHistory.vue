@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Form, Head } from '@inertiajs/vue3';
+import { Button } from '@/components/ui/button';
 import { edit } from '@/routes/sign-in-history';
+import {
+    destroy as untrustDevice,
+    store as trustDevice,
+} from '@/routes/trusted-devices';
 
 interface SignInEvent {
     id: number;
@@ -12,7 +17,18 @@ interface SignInEvent {
     created_at_diff: string | null;
 }
 
-defineProps<{ events: SignInEvent[] }>();
+interface TrustedDevice {
+    id: number;
+    label: string;
+    expires_diff: string;
+    is_current: boolean;
+}
+
+const props = defineProps<{
+    events: SignInEvent[];
+    currentDeviceTrusted: boolean;
+    trustedDevices: TrustedDevice[];
+}>();
 
 defineOptions({
     layout: {
@@ -42,6 +58,69 @@ const methodLabels: Record<string, string> = {
                 before.
             </p>
         </header>
+
+        <div class="rounded-xl border border-border p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-semibold">This device</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">
+                        Trusting it stops the new-device emails for this
+                        browser. A sign-in from a new network still tells you,
+                        because travel and theft look different.
+                    </p>
+                </div>
+                <Form
+                    v-if="!props.currentDeviceTrusted"
+                    v-bind="trustDevice.form()"
+                    v-slot="{ processing }"
+                >
+                    <Button size="sm" variant="outline" :disabled="processing">
+                        Trust this device
+                    </Button>
+                </Form>
+                <span v-else class="text-xs text-muted-foreground">
+                    Trusted
+                </span>
+            </div>
+
+            <ul
+                v-if="props.trustedDevices.length"
+                class="mt-4 divide-y divide-border border-t border-border"
+            >
+                <li
+                    v-for="device in props.trustedDevices"
+                    :key="device.id"
+                    class="flex items-center justify-between gap-4 py-3"
+                >
+                    <div class="min-w-0">
+                        <p class="text-sm">
+                            {{ device.label }}
+                            <span
+                                v-if="device.is_current"
+                                class="text-muted-foreground"
+                            >
+                                · this one
+                            </span>
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            Trust expires {{ device.expires_diff }}
+                        </p>
+                    </div>
+                    <Form
+                        v-bind="untrustDevice.form(device.id)"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            :disabled="processing"
+                        >
+                            Revoke trust
+                        </Button>
+                    </Form>
+                </li>
+            </ul>
+        </div>
 
         <ul class="divide-y divide-border rounded-xl border border-border">
             <li
