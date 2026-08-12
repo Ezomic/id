@@ -33,7 +33,8 @@ class RecordSignIn
             ->where('outcome', SignInEvent::SUCCESS);
 
         $isFirstEver = ! (clone $history)->exists();
-        $knownDevice = (clone $history)->where('device_fingerprint', $fingerprint)->exists();
+        $knownDevice = (clone $history)->where('device_fingerprint', $fingerprint)->exists()
+            || ($event->user instanceof User && $event->user->trusts($fingerprint));
         $knownNetwork = $network !== null && (clone $history)->where('network', $network)->exists();
 
         SignInEvent::create([

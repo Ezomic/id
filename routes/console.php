@@ -5,6 +5,7 @@ use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\PortalLookup;
 use App\Models\SignInEvent;
+use App\Models\TrustedDevice;
 use App\Services\SchedulerHeartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -30,6 +31,7 @@ Schedule::command('model:prune', ['--model' => [
     AuthorizedClient::class,
     LogoutNotification::class,
     PortalLookup::class,
+    TrustedDevice::class,
 ]])->daily();
 
 Schedule::command('id:prune-login-codes')->hourly();

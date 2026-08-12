@@ -110,6 +110,25 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     }
 
     /**
+     * Devices this user has vouched for. See TrustedDevice on why this is not
+     * the same thing as a session.
+     *
+     * @return HasMany<TrustedDevice, $this>
+     */
+    public function trustedDevices(): HasMany
+    {
+        return $this->hasMany(TrustedDevice::class);
+    }
+
+    public function trusts(string $fingerprint): bool
+    {
+        return $this->trustedDevices()
+            ->where('device_fingerprint', $fingerprint)
+            ->where('expires_at', '>', now())
+            ->exists();
+    }
+
+    /**
      * Groups this user belongs to. Group grants are one source of app access.
      *
      * @return BelongsToMany<Group, $this>
