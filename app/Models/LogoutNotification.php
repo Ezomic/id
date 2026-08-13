@@ -42,6 +42,22 @@ class LogoutNotification extends Model
     public const EVENT_USER_UPDATED = 'user.updated';
 
     /**
+     * The events a consumer that ignores the event field still handles
+     * correctly. id-client 0.2 ends the session on any payload it accepts, and
+     * for both of these ending the session is the intended outcome, so a client
+     * that never learned to read the field lands in the right place anyway.
+     *
+     * Anything absent from this list must not reach an unconfirmed consumer:
+     * see Application::understandsTypedEvents().
+     */
+    public const LEGACY_SAFE_EVENTS = [self::EVENT_LOGOUT, self::EVENT_ACCESS_REVOKED];
+
+    public static function isSafeForLegacyClients(string $event): bool
+    {
+        return in_array($event, self::LEGACY_SAFE_EVENTS, true);
+    }
+
+    /**
      * A delivered notification has done its job and is only ever read back in
      * aggregate.
      */

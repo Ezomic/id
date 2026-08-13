@@ -15,8 +15,10 @@ use App\Models\User;
  * the OAuth callback and never updated, so a name or email changed here stays
  * stale in all seven apps indefinitely.
  *
- * Same pipeline, different event. Older clients ignore types they do not know,
- * so a consumer that has not been redeployed keeps working.
+ * Same pipeline, different event. What older clients do with an unfamiliar
+ * event is the catch: id-client 0.2 never reads the field and ends the session
+ * on anything it accepts, so an event that does not mean "sign out" is withheld
+ * until the consumer has been observed reading it. See ID-77.
  */
 final class NotifyClientsOfEvent
 {
@@ -45,11 +47,21 @@ final class NotifyClientsOfEvent
             ->get();
 
         $ids = [];
+        $legacySafe = LogoutNotification::isSafeForLegacyClients($event);
 
         foreach ($applications as $application) {
             $endpoint = $application->logoutUrl();
 
             if ($endpoint === null) {
+                continue;
+            }
+
+            // Withholding the event leaves the consumer's copy of the user
+            // stale, which is the bug ID-73 set out to fix. Delivering it
+            // signs the user out of an app they are working in. Stale loses to
+            // spurious sign-outs, and the connection check says which apps are
+            // in this state and what to redeploy.
+            if (! $legacySafe && ! $application->understandsTypedEvents()) {
                 continue;
             }
 

@@ -69,6 +69,14 @@ function estateApp(User $user, string $slug = 'zero'): array
     return [$application, $token];
 }
 
+/** Mark a consumer as one the ID-69 probe has seen read the event field. */
+function estateConfirm(Application $application): Application
+{
+    $application->forceFill(['typed_events_confirmed_at' => now()])->save();
+
+    return $application;
+}
+
 it('lets a consumer sign the user out of the whole estate', function () {
     $user = User::factory()->create();
     [, $token] = estateApp($user, 'zero');
@@ -127,6 +135,7 @@ it('tells consumers when access is revoked', function () {
 it('tells consumers when the profile changes', function () {
     $user = User::factory()->create();
     [$application] = estateApp($user);
+    estateConfirm($application);
 
     AuthorizedClient::create([
         'user_id' => $user->id,
@@ -148,6 +157,7 @@ it('tells consumers when the profile changes', function () {
 it('sends the event type on the wire', function () {
     $user = User::factory()->create();
     [$application] = estateApp($user);
+    estateConfirm($application);
 
     AuthorizedClient::create([
         'user_id' => $user->id,
@@ -165,6 +175,83 @@ it('sends the event type on the wire', function () {
 
         return ($payload['event'] ?? null) === LogoutNotification::EVENT_USER_UPDATED;
     });
+});
+
+it('withholds a profile change from a consumer that would sign the user out', function () {
+    $user = User::factory()->create();
+    [$application] = estateApp($user);
+
+    AuthorizedClient::create([
+        'user_id' => $user->id,
+        'sso_session_id' => 'a-session',
+        'oauth_client_id' => $application->oauth_client_id,
+    ]);
+
+    // id-client 0.2 never reads the event and ends the session on anything it
+    // accepts, so delivering this would sign the user out for renaming
+    // themselves. Unprobed apps are assumed to be that old.
+    test()->actingAs($user)->patch(route('profile.update'), [
+        'name' => 'Renamed Person',
+        'email' => $user->email,
+    ])->assertRedirect();
+
+    expect(LogoutNotification::where('event', LogoutNotification::EVENT_USER_UPDATED)->count())->toBe(0);
+    Http::assertNothingSent();
+});
+
+it('still signs an unconfirmed consumer out', function () {
+    $user = User::factory()->create();
+    [$application] = estateApp($user);
+
+    AuthorizedClient::create([
+        'user_id' => $user->id,
+        'sso_session_id' => 'a-session',
+        'oauth_client_id' => $application->oauth_client_id,
+    ]);
+
+    // Ending the session is what an old client does with any event it accepts,
+    // which is exactly right for these two, so the gate must not block them.
+    test()->actingAs($user)->post(route('logout'));
+
+    expect(LogoutNotification::where('event', LogoutNotification::EVENT_LOGOUT)->count())->toBe(1);
+});
+
+it('still tells an unconfirmed consumer that access was revoked', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+    [$application] = estateApp($user);
+
+    AuthorizedClient::create([
+        'user_id' => $user->id,
+        'sso_session_id' => 'a-session',
+        'oauth_client_id' => $application->oauth_client_id,
+    ]);
+
+    test()->actingAs($admin)
+        ->put(route('admin.users.access.update', $user), ['applications' => []])
+        ->assertRedirect();
+
+    expect(LogoutNotification::where('event', LogoutNotification::EVENT_ACCESS_REVOKED)->count())->toBe(1);
+});
+
+it('delivers a profile change once the consumer is confirmed', function () {
+    $user = User::factory()->create();
+    [$application] = estateApp($user);
+
+    AuthorizedClient::create([
+        'user_id' => $user->id,
+        'sso_session_id' => 'a-session',
+        'oauth_client_id' => $application->oauth_client_id,
+    ]);
+
+    estateConfirm($application);
+
+    test()->actingAs($user)->patch(route('profile.update'), [
+        'name' => 'Renamed Person',
+        'email' => $user->email,
+    ])->assertRedirect();
+
+    expect(LogoutNotification::where('event', LogoutNotification::EVENT_USER_UPDATED)->count())->toBe(1);
 });
 
 it('keeps existing logout rows working across the migration', function () {
