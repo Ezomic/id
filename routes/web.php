@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LogoutDeliveryController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Api\OidcDiscoveryController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\ReauthenticateController;
@@ -37,6 +38,11 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('health/scheduler', SchedulerHealthController::class)->name('health.scheduler');
+
+// Standard discovery beside the bespoke userinfo contract, not instead of it:
+// seven apps depend on the latter.
+Route::get('.well-known/openid-configuration', [OidcDiscoveryController::class, 'configuration'])->name('oidc.configuration');
+Route::get('.well-known/jwks.json', [OidcDiscoveryController::class, 'jwks'])->name('oidc.jwks');
 
 Route::middleware('guest')->group(function () {
     Route::post('login/code', [LoginCodeController::class, 'send'])
