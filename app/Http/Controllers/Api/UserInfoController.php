@@ -33,15 +33,35 @@ class UserInfoController extends Controller
 
         abort_unless($user->canAccess($application), Response::HTTP_FORBIDDEN, 'You do not have access to this application.');
 
-        return response()->json([
+        $payload = [
             'sub' => (string) $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'applications' => Application::query()
+        ];
+
+        // The estate-wide list tells the caller which *other* apps this user
+        // can reach, which is the part worth withholding. An application
+        // registered before scoping keeps receiving it, so nothing that works
+        // today stops working.
+        if ($application->grantsScope('estate', $this->tokenScopes($token))) {
+            $payload['applications'] = Application::query()
                 ->whereIn('id', $user->accessibleApplicationIds())
                 ->where('active', true)
                 ->orderBy('slug')
-                ->pluck('slug'),
-        ]);
+                ->pluck('slug');
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * @param  AccessToken<covariant \Laravel\Passport\Contracts\OAuthenticatable>  $token
+     */
+    private function tokenScopes(AccessToken $token): string
+    {
+        return implode(' ', array_map(
+            fn (mixed $scope): string => is_scalar($scope) ? (string) $scope : '',
+            $token->scopes ?? [],
+        ));
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceApplicationScopes;
 use App\Http\Middleware\RecordAuthorizedClient;
 
 return [
@@ -17,7 +18,7 @@ return [
 
     'guard' => 'web',
 
-    'middleware' => [RecordAuthorizedClient::class],
+    'middleware' => [RecordAuthorizedClient::class, EnforceApplicationScopes::class],
 
     /*
     |--------------------------------------------------------------------------

@@ -31,6 +31,14 @@ class UpdateApplication
             'active' => $isActive,
         ])->save();
 
+        if (array_key_exists('allowed_scopes', $data)) {
+            $scopes = $data['allowed_scopes'];
+
+            $application->forceFill([
+                'allowed_scopes' => is_array($scopes) ? array_values($scopes) : null,
+            ])->save();
+        }
+
         if (isset($data['redirect_uri']) && $application->oauthClient) {
             $application->oauthClient->forceFill([
                 'redirect_uris' => [$data['redirect_uri']],
