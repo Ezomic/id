@@ -18,17 +18,28 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property int $application_id
  * @property string $endpoint
+ * @property string $event
+ * @property array<string, mixed>|null $payload
  * @property int $attempts
  * @property Carbon|null $delivered_at
  * @property string|null $last_error
  * @property-read Application|null $application
  */
-#[Fillable(['user_id', 'application_id', 'endpoint', 'attempts', 'delivered_at', 'last_error'])]
+#[Fillable(['user_id', 'application_id', 'event', 'payload', 'endpoint', 'attempts', 'delivered_at', 'last_error'])]
 class LogoutNotification extends Model
 {
     use MassPrunable;
 
     public const MAX_ATTEMPTS = 5;
+
+    /** The user signed out at ID; end their session here. */
+    public const EVENT_LOGOUT = 'logout';
+
+    /** The user lost access to this application. */
+    public const EVENT_ACCESS_REVOKED = 'access.revoked';
+
+    /** Name or email changed at ID; the local copy is stale. */
+    public const EVENT_USER_UPDATED = 'user.updated';
 
     /**
      * A delivered notification has done its job and is only ever read back in
@@ -69,6 +80,6 @@ class LogoutNotification extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['delivered_at' => 'datetime', 'attempts' => 'integer'];
+        return ['delivered_at' => 'datetime', 'attempts' => 'integer', 'payload' => 'array'];
     }
 }

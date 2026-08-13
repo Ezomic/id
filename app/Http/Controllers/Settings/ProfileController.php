@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Access\RevokeUserTokens;
+use App\Actions\Auth\NotifyClientsOfEvent;
 use App\Actions\Settings\RequestEmailChange;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\LogoutNotification;
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +36,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request, RequestEmailChange $requestEmailChange): RedirectResponse
+    public function update(ProfileUpdateRequest $request, RequestEmailChange $requestEmailChange, NotifyClientsOfEvent $notifyClients): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
@@ -42,7 +44,16 @@ class ProfileController extends Controller
         $validated = $request->validated();
         $email = is_string($validated['email'] ?? null) ? $validated['email'] : $user->email;
 
+        $nameChanged = ($validated['name'] ?? $user->name) !== $user->name;
+
         $user->fill(['name' => $validated['name'] ?? $user->name])->save();
+
+        if ($nameChanged) {
+            $notifyClients->handle($user, LogoutNotification::EVENT_USER_UPDATED, null, [
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+        }
 
         if ($email === $user->email) {
             Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
