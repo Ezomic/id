@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\SsoSessionId;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class RecordAuthorizedClient
@@ -37,8 +38,20 @@ class RecordAuthorizedClient
             return $response;
         }
 
-        if (! $this->issuedACode($response)) {
+        $code = $this->issuedCode($response);
+
+        if ($code === null) {
             return $response;
+        }
+
+        // The nonce belongs to the authorize request, but the ID token is
+        // minted at the token endpoint, which is a separate server-to-server
+        // call with no session. Parking it against the code is what carries it
+        // across; the code is single use and short lived, so is this.
+        $nonce = $request->query('nonce');
+
+        if (is_string($nonce) && $nonce !== '') {
+            Cache::put('oidc.nonce:'.hash('sha256', $code), $nonce, now()->addMinutes(10));
         }
 
         AuthorizedClient::query()->updateOrCreate(
@@ -56,14 +69,16 @@ class RecordAuthorizedClient
      * A denied or failed authorize redirects with an `error` instead, and that
      * is not a sign-in worth remembering.
      */
-    private function issuedACode(Response $response): bool
+    private function issuedCode(Response $response): ?string
     {
         if (! $response->isRedirect()) {
-            return false;
+            return null;
         }
 
         parse_str((string) parse_url((string) $response->headers->get('Location'), PHP_URL_QUERY), $query);
 
-        return isset($query['code']);
+        $code = $query['code'] ?? null;
+
+        return is_string($code) && $code !== '' ? $code : null;
     }
 }

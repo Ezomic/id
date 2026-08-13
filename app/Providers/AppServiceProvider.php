@@ -62,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         // this user is" and "what else they can reach", because the second is
         // what leaks the shape of the estate to every app that asks.
         Passport::tokensCan([
+            'openid' => 'Confirm who you are',
             'identity' => 'Your name and email address',
             'estate' => 'Which Thijssensoftware apps you can reach',
         ]);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AttachIdToken;
 use App\Http\Middleware\EnforceApplicationScopes;
 use App\Http\Middleware\RecordAuthorizedClient;
 
@@ -18,7 +19,7 @@ return [
 
     'guard' => 'web',
 
-    'middleware' => [RecordAuthorizedClient::class, EnforceApplicationScopes::class],
+    'middleware' => [RecordAuthorizedClient::class, EnforceApplicationScopes::class, AttachIdToken::class],
 
     /*
     |--------------------------------------------------------------------------
