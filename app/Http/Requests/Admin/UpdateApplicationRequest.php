@@ -22,6 +22,10 @@ class UpdateApplicationRequest extends FormRequest
             'category' => ['nullable', 'string', 'max:50'],
             'redirect_uri' => ['required', 'url', 'max:255'],
             'active' => ['boolean'],
+            // Absent means "leave scoping as it is"; an empty array is a
+            // deliberate lockdown. Those must stay distinguishable.
+            'allowed_scopes' => ['sometimes', 'nullable', 'array'],
+            'allowed_scopes.*' => ['string', 'in:identity,estate'],
             'users' => ['array'],
             'users.*' => [Rule::exists('users', 'id')],
         ];

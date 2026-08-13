@@ -44,6 +44,7 @@ interface ManagedApp {
     redirect_uri: string | null;
     client_id: string | null;
     active: boolean;
+    allowed_scopes: string[] | null;
     user_ids: number[];
     users_count: number;
 }
@@ -133,6 +134,7 @@ const editForm = useForm<{
     category: string;
     redirect_uri: string;
     active: boolean;
+    allowed_scopes: string[] | null;
     users: number[];
 }>({
     name: '',
@@ -144,6 +146,7 @@ const editForm = useForm<{
     category: '',
     redirect_uri: '',
     active: true,
+    allowed_scopes: null,
     users: [],
 });
 
@@ -160,6 +163,7 @@ function openEdit(app: ManagedApp) {
         category: app.category ?? '',
         redirect_uri: app.redirect_uri ?? '',
         active: app.active,
+        allowed_scopes: app.allowed_scopes ? [...app.allowed_scopes] : null,
         users: [...app.user_ids],
     });
     editForm.reset();
@@ -586,6 +590,64 @@ function submitRegister() {
                             :aria-label="`Accent ${c}`"
                             @click="editForm.accent = c"
                         />
+                    </div>
+                </div>
+
+                <div class="border-t border-border pt-4">
+                    <p class="text-sm font-medium">Scopes</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">
+                        Unscoped apps read everything, which is how every app
+                        registered before scopes behaves. Opting in narrows what
+                        this one can read, so only do it once the app asks for
+                        the scopes it needs.
+                    </p>
+                    <div class="mt-3 flex flex-wrap items-center gap-4">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                :checked="editForm.allowed_scopes !== null"
+                                @change="
+                                    editForm.allowed_scopes =
+                                        editForm.allowed_scopes === null
+                                            ? ['identity', 'estate']
+                                            : null
+                                "
+                            />
+                            Enforce scopes
+                        </label>
+                        <label
+                            v-for="scope in ['identity', 'estate']"
+                            :key="scope"
+                            class="flex items-center gap-2 text-sm"
+                            :class="
+                                editForm.allowed_scopes === null
+                                    ? 'opacity-40'
+                                    : ''
+                            "
+                        >
+                            <input
+                                type="checkbox"
+                                :disabled="editForm.allowed_scopes === null"
+                                :checked="
+                                    editForm.allowed_scopes?.includes(scope) ??
+                                    false
+                                "
+                                @change="
+                                    editForm.allowed_scopes = (
+                                        editForm.allowed_scopes ?? []
+                                    ).includes(scope)
+                                        ? (
+                                              editForm.allowed_scopes ?? []
+                                          ).filter((s) => s !== scope)
+                                        : [
+                                              ...(editForm.allowed_scopes ??
+                                                  []),
+                                              scope,
+                                          ]
+                                "
+                            />
+                            {{ scope }}
+                        </label>
                     </div>
                 </div>
 

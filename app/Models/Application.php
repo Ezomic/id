@@ -20,12 +20,13 @@ use Illuminate\Support\Str;
  * @property string|null $category
  * @property string|null $oauth_client_id
  * @property string|null $logout_secret
+ * @property list<string>|null $allowed_scopes
  * @property bool $active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read OAuthClient|null $oauthClient
  */
-#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'category', 'oauth_client_id', 'logout_secret', 'active'])]
+#[Fillable(['name', 'slug', 'description', 'initials', 'accent', 'launch_url', 'category', 'oauth_client_id', 'logout_secret', 'allowed_scopes', 'active'])]
 class Application extends Model
 {
     /**
@@ -135,6 +136,36 @@ class Application extends Model
     {
         return [
             'active' => 'boolean',
+            'allowed_scopes' => 'array',
         ];
+    }
+
+    /**
+     * Scopes registered before this feature existed are null, which means the
+     * application predates scoping and still gets everything. Opting one in is
+     * a deliberate act, because narrowing it is what can break a live consumer.
+     */
+    public function scopesAreEnforced(): bool
+    {
+        return $this->allowed_scopes !== null;
+    }
+
+    public function allowsScope(string $scope): bool
+    {
+        return ! $this->scopesAreEnforced() || in_array($scope, $this->allowed_scopes ?? [], true);
+    }
+
+    /**
+     * What a token from this application is allowed to read. An unscoped
+     * application reads everything, which is exactly what it does today.
+     */
+    public function grantsScope(string $scope, ?string $tokenScopes): bool
+    {
+        if (! $this->scopesAreEnforced()) {
+            return true;
+        }
+
+        return $this->allowsScope($scope)
+            && in_array($scope, preg_split('/\s+/', (string) $tokenScopes, -1, PREG_SPLIT_NO_EMPTY) ?: [], true);
     }
 }

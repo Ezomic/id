@@ -36,6 +36,7 @@ class ApplicationController extends Controller
                     'redirect_uri' => $app->redirectUri(),
                     'client_id' => $app->oauth_client_id,
                     'active' => $app->active,
+                    'allowed_scopes' => $app->allowed_scopes,
                     'user_ids' => $app->users->pluck('id'),
                     'users_count' => $app->users->count(),
                 ]),
