@@ -36,8 +36,20 @@ function checkOf(Application $application, string $name): array
     return collect($result['checks'])->firstWhere('name', $name);
 }
 
+/** A consumer on id-client 0.3 or later: it reads the event and ignores one it does not know. */
+function fakeModernConsumer(): void
+{
+    Http::fake(['*' => Http::response(['status' => 'ignored'])]);
+}
+
+/** A consumer on 0.2: it accepts anything signed and ends the session regardless. */
+function fakeLegacyConsumer(): void
+{
+    Http::fake(['*' => Http::response(['status' => 'ok'])]);
+}
+
 it('reports a correctly wired app as healthy', function () {
-    Http::fake();
+    fakeModernConsumer();
 
     expect(app(CheckApplicationConnection::class)->handle(wiredApp())['healthy'])->toBeTrue();
 });
@@ -117,8 +129,61 @@ it('flags outstanding logout deliveries', function () {
     expect(checkOf($application, 'Logout deliveries')['ok'])->toBeFalse();
 });
 
+it('detects a consumer that reads the event field', function () {
+    fakeModernConsumer();
+    $application = wiredApp();
+
+    $check = checkOf($application, 'Event handling');
+
+    expect($check['ok'])->toBeTrue()
+        ->and($application->fresh()->understandsTypedEvents())->toBeTrue();
+});
+
+it('detects a consumer that ends the session on any event', function () {
+    fakeLegacyConsumer();
+    $application = wiredApp();
+
+    $check = checkOf($application, 'Event handling');
+
+    expect($check['ok'])->toBeFalse()
+        ->and($check['detail'])->toContain('id-client 0.3 or later')
+        ->and($application->fresh()->understandsTypedEvents())->toBeFalse();
+});
+
+it('withdraws confirmation when a consumer is rolled back', function () {
+    // One stub whose answer changes, because a second Http::fake() call is
+    // merged behind the first rather than replacing it.
+    $consumer = new stdClass;
+    $consumer->status = 'ignored';
+    Http::fake(fn () => Http::response(['status' => $consumer->status]));
+
+    $application = wiredApp();
+    app(CheckApplicationConnection::class)->handle($application);
+    expect($application->fresh()->understandsTypedEvents())->toBeTrue();
+
+    // A downgrade is as much a fact about the consumer as an upgrade, so the
+    // check has to be able to take the confirmation away again.
+    $consumer->status = 'ok';
+    app(CheckApplicationConnection::class)->handle($application);
+
+    expect($application->fresh()->understandsTypedEvents())->toBeFalse();
+});
+
+it('probes event handling without touching a real session', function () {
+    fakeModernConsumer();
+
+    app(CheckApplicationConnection::class)->handle(wiredApp());
+
+    Http::assertSent(function ($request) {
+        $payload = json_decode($request->body(), true);
+
+        return ($payload['event'] ?? null) === 'connection.probe'
+            && str_starts_with($payload['sub'], 'connection-probe-');
+    });
+});
+
 it('runs from the command line', function () {
-    Http::fake();
+    fakeModernConsumer();
     wiredApp();
 
     $this->artisan('id:check', ['slug' => 'zero'])->assertSuccessful();
@@ -132,7 +197,7 @@ it('exits non-zero when something needs attention', function () {
 });
 
 it('runs from the admin screen and is closed to non-admins', function () {
-    Http::fake();
+    fakeModernConsumer();
     $application = wiredApp();
 
     $this->actingAs(User::factory()->admin()->create())

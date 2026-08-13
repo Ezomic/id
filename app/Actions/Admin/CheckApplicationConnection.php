@@ -7,6 +7,7 @@ namespace App\Actions\Admin;
 use App\Models\Application;
 use App\Models\LogoutNotification;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Throwable;
@@ -29,6 +30,7 @@ final class CheckApplicationConnection
             $this->redirectUri($application),
             $this->logoutSecret($application),
             $this->logoutEndpoint($application),
+            $this->typedEvents($application),
             $this->deliveries($application),
         ];
 
@@ -96,24 +98,8 @@ final class CheckApplicationConnection
             return $this->fail('Logout endpoint', 'Cannot be derived without a conventional redirect URI and a secret.');
         }
 
-        $payload = json_encode([
-            // A subject that cannot match any account, so a consumer which
-            // verifies the signature accepts the call and finds nobody to sign
-            // out. Running this must never end a real session.
-            'sub' => 'connection-probe-'.Str::random(32),
-            'issued_at' => CarbonImmutable::now()->getTimestamp(),
-            'nonce' => Str::random(32),
-            'probe' => true,
-        ], JSON_THROW_ON_ERROR);
-
         try {
-            $response = Http::timeout(5)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'X-Id-Signature' => hash_hmac('sha256', $payload, $secret),
-                ])
-                ->withBody($payload, 'application/json')
-                ->post($endpoint);
+            $response = $this->probe($endpoint, $secret);
         } catch (Throwable $e) {
             // A consumer being down is a result, not an exception.
             return $this->fail('Logout endpoint', 'Unreachable: '.Str::limit($e->getMessage(), 120));
@@ -126,6 +112,77 @@ final class CheckApplicationConnection
             $response->successful() => $this->pass('Logout endpoint', 'Accepted a signed probe.'),
             default => $this->fail('Logout endpoint', 'Returned HTTP '.$response->status().'.'),
         };
+    }
+
+    /**
+     * Which back-channel dialect the consumer speaks, asked rather than
+     * configured because a hand-maintained version column goes stale the first
+     * time an app is redeployed without anyone updating it here.
+     *
+     * The probe carries an event no client has a handler for. 0.3 and later
+     * answer `ignored`; 0.2 answers `ok`, because it does not look at the event
+     * at all and has just tried to sign out a subject that does not exist.
+     * Distinguishing them is what makes it safe to send `user.updated`.
+     *
+     * @return array{name: string, ok: bool, detail: string}
+     */
+    private function typedEvents(Application $application): array
+    {
+        $endpoint = $application->logoutUrl();
+        $secret = $application->logout_secret;
+
+        if ($endpoint === null || $secret === null) {
+            return $this->fail('Event handling', 'Cannot be probed without a conventional redirect URI and a secret.');
+        }
+
+        try {
+            $response = $this->probe($endpoint, $secret, ['event' => 'connection.probe']);
+        } catch (Throwable $e) {
+            return $this->fail('Event handling', 'Unreachable: '.Str::limit($e->getMessage(), 120));
+        }
+
+        $understands = $response->successful() && $response->json('status') === 'ignored';
+
+        $application->forceFill([
+            'typed_events_confirmed_at' => $understands ? CarbonImmutable::now() : null,
+        ])->save();
+
+        if ($understands) {
+            return $this->pass('Event handling', 'Reads the event field, so profile updates are delivered.');
+        }
+
+        return $this->fail(
+            'Event handling',
+            'Ends the session on any event it accepts, so profile updates are withheld. Redeploy with id-client 0.3 or later.',
+        );
+    }
+
+    /**
+     * A signed call whose subject is nobody. A consumer that verifies the
+     * signature accepts it and finds no user to act on, so probing can never
+     * end a real session.
+     *
+     * @param  array<string, mixed>  $extra
+     *
+     * @throws Throwable
+     */
+    private function probe(string $endpoint, string $secret, array $extra = []): Response
+    {
+        $payload = json_encode([
+            'sub' => 'connection-probe-'.Str::random(32),
+            'issued_at' => CarbonImmutable::now()->getTimestamp(),
+            'nonce' => Str::random(32),
+            'probe' => true,
+            ...$extra,
+        ], JSON_THROW_ON_ERROR);
+
+        return Http::timeout(5)
+            ->withHeaders([
+                'Content-Type' => 'application/json',
+                'X-Id-Signature' => hash_hmac('sha256', $payload, $secret),
+            ])
+            ->withBody($payload, 'application/json')
+            ->post($endpoint);
     }
 
     /**

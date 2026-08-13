@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
  * @property string|null $category
  * @property string|null $oauth_client_id
  * @property string|null $logout_secret
+ * @property Carbon|null $typed_events_confirmed_at
  * @property list<string>|null $allowed_scopes
  * @property bool $active
  * @property Carbon|null $created_at
@@ -137,7 +138,21 @@ class Application extends Model
         return [
             'active' => 'boolean',
             'allowed_scopes' => 'array',
+            'typed_events_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether this consumer reads the `event` field on a back-channel call.
+     *
+     * id-client 0.2 does not: it verifies the signature and ends the session
+     * whatever the event says. Sending it anything other than a sign-out
+     * therefore signs the user out for the wrong reason, so ID has to know
+     * which behaviour it is talking to before it can use the newer events.
+     */
+    public function understandsTypedEvents(): bool
+    {
+        return $this->typed_events_confirmed_at !== null;
     }
 
     /**
