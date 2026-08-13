@@ -83,12 +83,34 @@ class Application extends Model
      */
     public function ssoLaunchUrl(): ?string
     {
+        return $this->siblingOfCallback('/auth/sso/redirect');
+    }
+
+    /**
+     * Where to POST a back-channel logout. Same convention as ssoLaunchUrl():
+     * apps using the id-client package register a `/auth/sso/callback` redirect
+     * URI and get the sibling logout endpoint for free.
+     */
+    public function logoutUrl(): ?string
+    {
+        return $this->siblingOfCallback('/auth/sso/logout');
+    }
+
+    /**
+     * Both endpoints are derived from the same registered callback, because an
+     * app that launches on one host and receives back-channel calls on another
+     * is not one integration. Picking independently is how zero ended up
+     * launching on zero.thijssensoftware.nl while its logouts went to a
+     * hostname with no DNS record at all. See ID-78.
+     */
+    private function siblingOfCallback(string $path): ?string
+    {
         $suffix = '/auth/sso/callback';
 
-        $callbacks = array_filter(
+        $callbacks = array_values(array_filter(
             $this->redirectUris(),
             fn (string $uri) => str_ends_with($uri, $suffix),
-        );
+        ));
 
         if ($callbacks === []) {
             return null;
@@ -105,27 +127,9 @@ class Application extends Model
             }
         }
 
-        $chosen ??= reset($callbacks);
+        $chosen ??= $callbacks[0];
 
-        return substr($chosen, 0, -strlen($suffix)).'/auth/sso/redirect';
-    }
-
-    /**
-     * Where to POST a back-channel logout. Same convention as ssoLaunchUrl():
-     * apps using the id-client package register a `/auth/sso/callback` redirect
-     * URI and get the sibling logout endpoint for free.
-     */
-    public function logoutUrl(): ?string
-    {
-        $suffix = '/auth/sso/callback';
-
-        foreach ($this->redirectUris() as $uri) {
-            if (str_ends_with($uri, $suffix)) {
-                return substr($uri, 0, -strlen($suffix)).'/auth/sso/logout';
-            }
-        }
-
-        return null;
+        return substr($chosen, 0, -strlen($suffix)).$path;
     }
 
     public function glyph(): string
