@@ -151,6 +151,14 @@ final class CheckApplicationConnection
             return $this->pass('Event handling', 'Reads the event field, so profile updates are delivered.');
         }
 
+        // An endpoint that refused the call says nothing about which dialect
+        // the consumer speaks. Blaming the version sends you looking for a
+        // problem that is not there, and the check above already named the
+        // real one.
+        if (! $response->successful()) {
+            return $this->fail('Event handling', 'No answer to probe, so profile updates are withheld. Fix the logout endpoint first.');
+        }
+
         return $this->fail(
             'Event handling',
             'Ends the session on any event it accepts, so profile updates are withheld. Redeploy with id-client 0.3 or later.',

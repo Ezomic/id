@@ -150,6 +150,20 @@ it('detects a consumer that ends the session on any event', function () {
         ->and($application->fresh()->understandsTypedEvents())->toBeFalse();
 });
 
+it('does not blame the dialect when the endpoint never answered', function () {
+    Http::fake(['*' => Http::response('', 404)]);
+    $application = wiredApp();
+
+    $check = checkOf($application, 'Event handling');
+
+    // A consumer with no route to accept a call cannot be ending sessions on
+    // anything, whatever version it is on.
+    expect($check['ok'])->toBeFalse()
+        ->and($check['detail'])->toContain('No answer to probe')
+        ->and($check['detail'])->not->toContain('id-client 0.3')
+        ->and($application->fresh()->understandsTypedEvents())->toBeFalse();
+});
+
 it('withdraws confirmation when a consumer is rolled back', function () {
     // One stub whose answer changes, because a second Http::fake() call is
     // merged behind the first rather than replacing it.
