@@ -99,6 +99,7 @@ final class NotifyClientsOfLogout
             $ids[] = LogoutNotification::create([
                 'user_id' => $user->id,
                 'application_id' => $application->id,
+                'event' => LogoutNotification::EVENT_LOGOUT,
                 'endpoint' => $endpoint,
             ])->id;
         }

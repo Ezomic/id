@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Access;
 
+use App\Actions\Auth\NotifyClientsOfEvent;
 use App\Models\Application;
+use App\Models\LogoutNotification;
 use App\Models\User;
 
 final class RevokeTokensForLostAccess
 {
-    public function __construct(private readonly RevokeUserTokens $revokeUserTokens) {}
+    public function __construct(
+        private readonly RevokeUserTokens $revokeUserTokens,
+        private readonly NotifyClientsOfEvent $notifyClients,
+    ) {}
 
     /**
      * Access can be lost through a direct revoke, a group losing an app, a user
@@ -36,6 +41,14 @@ final class RevokeTokensForLostAccess
                 ->all()
         );
 
-        return $lost === [] ? 0 : $this->revokeUserTokens->handle($user, $lost);
+        if ($lost === []) {
+            return 0;
+        }
+
+        // Revoking the tokens stops the app refreshing; telling it is what ends
+        // the local session the user is still sitting in.
+        $this->notifyClients->handle($user, LogoutNotification::EVENT_ACCESS_REVOKED, $lost);
+
+        return $this->revokeUserTokens->handle($user, $lost);
     }
 }

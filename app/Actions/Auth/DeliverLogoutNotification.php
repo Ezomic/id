@@ -24,9 +24,11 @@ final class DeliverLogoutNotification
         }
 
         $payload = json_encode([
+            'event' => $notification->event,
             'sub' => (string) $notification->user_id,
             'issued_at' => CarbonImmutable::now()->getTimestamp(),
             'nonce' => Str::random(32),
+            ...($notification->payload ?? []),
         ], JSON_THROW_ON_ERROR);
 
         try {
