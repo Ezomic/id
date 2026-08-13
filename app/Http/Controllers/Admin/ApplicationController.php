@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\CheckApplicationConnection;
 use App\Actions\Admin\CreateApplication;
 use App\Actions\Admin\RotateClientSecret;
 use App\Actions\Admin\UpdateApplication;
@@ -64,6 +65,14 @@ class ApplicationController extends Controller
         $updateApplication->handle($application, $request->validated());
 
         return back()->with('status', 'Application saved.');
+    }
+
+    public function check(Application $application, CheckApplicationConnection $check): RedirectResponse
+    {
+        return back()->with('connectionCheck', [
+            'name' => $application->name,
+            ...$check->handle($application),
+        ]);
     }
 
     public function rotateSecret(Application $application, RotateClientSecret $rotateSecret): RedirectResponse

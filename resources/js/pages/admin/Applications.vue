@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import {
+    check as checkConnection,
     index as appsIndex,
     rotateSecret,
     store,
@@ -197,6 +198,35 @@ const createdClient = ref<{
     rotated?: boolean;
 } | null>(null);
 const rotating = ref(false);
+const checking = ref(false);
+const connectionCheck = ref<{
+    name: string;
+    healthy: boolean;
+    checks: { name: string; ok: boolean; detail: string }[];
+} | null>(null);
+
+function runCheck() {
+    if (editingId.value === null) {
+        return;
+    }
+
+    checking.value = true;
+
+    router.post(
+        checkConnection(editingId.value).url,
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                connectionCheck.value =
+                    page.props.flash?.connectionCheck ?? null;
+            },
+            onFinish: () => {
+                checking.value = false;
+            },
+        },
+    );
+}
 
 const createForm = useForm<{
     name: string;
@@ -641,9 +671,44 @@ function submitRegister() {
                 </div>
             </div>
 
+            <div v-if="connectionCheck" class="border-t border-border p-4">
+                <p class="text-sm font-semibold">
+                    {{
+                        connectionCheck.healthy
+                            ? 'Wired up correctly'
+                            : 'Needs attention'
+                    }}
+                </p>
+                <ul class="mt-2 space-y-1.5">
+                    <li
+                        v-for="line in connectionCheck.checks"
+                        :key="line.name"
+                        class="text-xs"
+                    >
+                        <span
+                            :class="
+                                line.ok
+                                    ? 'text-emerald-500'
+                                    : 'text-destructive'
+                            "
+                        >
+                            {{ line.ok ? '✓' : '✗' }}
+                        </span>
+                        <span class="font-medium">{{ line.name }}:</span>
+                        <span class="text-muted-foreground">{{
+                            line.detail
+                        }}</span>
+                    </li>
+                </ul>
+            </div>
+
             <SheetFooter
                 class="flex-row justify-end gap-2 border-t border-border"
             >
+                <Button variant="ghost" :disabled="checking" @click="runCheck">
+                    <Spinner v-if="checking" />
+                    Test connection
+                </Button>
                 <Button
                     variant="ghost"
                     class="mr-auto text-destructive"

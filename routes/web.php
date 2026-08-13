@@ -88,6 +88,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::post('applications', [ApplicationController::class, 'store'])->name('applications.store');
     Route::put('applications/{application}', [ApplicationController::class, 'update'])->middleware('reauth')->name('applications.update');
+    Route::post('applications/{application}/check', [ApplicationController::class, 'check'])->name('applications.check');
     Route::post('applications/{application}/rotate-secret', [ApplicationController::class, 'rotateSecret'])->middleware('reauth')->name('applications.rotate-secret');
 
     Route::get('access-requests', [AdminAccessRequestController::class, 'index'])->name('access-requests.index');
