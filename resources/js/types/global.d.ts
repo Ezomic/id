@@ -30,6 +30,15 @@ declare module '@inertiajs/core' {
                     logout_secret: string;
                     rotated?: boolean;
                 } | null;
+                connectionCheck: {
+                    name: string;
+                    healthy: boolean;
+                    checks: {
+                        name: string;
+                        ok: boolean;
+                        detail: string;
+                    }[];
+                } | null;
             };
             sidebarOpen: boolean;
             [key: string]: unknown;
