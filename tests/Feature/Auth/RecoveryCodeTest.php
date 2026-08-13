@@ -266,3 +266,29 @@ it('does not prompt an account with no codes at all', function () {
 
     expect($user->hasUnacknowledgedRecoveryCodes())->toBeFalse();
 });
+
+it('issues a usable set from the command line', function () {
+    Notification::fake();
+    $user = User::factory()->create();
+
+    // The escape hatch for an account that cannot re-authenticate: without it,
+    // regenerating codes is gated behind having a code.
+    $this->artisan('id:recovery-codes', ['email' => $user->email])->assertSuccessful();
+
+    expect($user->recoveryCodes()->whereNull('used_at')->count())->toBe(GenerateRecoveryCodes::COUNT)
+        ->and($user->fresh()->hasUnacknowledgedRecoveryCodes())->toBeTrue();
+});
+
+it('invalidates the previous set from the command line', function () {
+    Notification::fake();
+    [$user, $codes] = userWithCodes();
+
+    $this->artisan('id:recovery-codes', ['email' => $user->email])->assertSuccessful();
+
+    $this->post(route('login.recovery-code'), ['email' => $user->email, 'code' => $codes[0]])
+        ->assertSessionHasErrors('code');
+});
+
+it('refuses an unknown account', function () {
+    $this->artisan('id:recovery-codes', ['email' => 'nobody@example.com'])->assertFailed();
+});
