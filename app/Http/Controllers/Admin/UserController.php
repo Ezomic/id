@@ -6,8 +6,10 @@ use App\Actions\Access\ConnectedApplications;
 use App\Actions\Access\RevokeTokensForLostAccess;
 use App\Actions\Access\SignOutEverywhere;
 use App\Actions\Admin\CreateUser;
+use App\Actions\Admin\InviteUser;
 use App\Actions\Admin\SetAdminRole;
 use App\Actions\Admin\SetApplicationAccess;
+use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateAccessRequest;
@@ -17,6 +19,7 @@ use App\Models\User;
 use App\Services\DeviceFingerprint;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,6 +27,8 @@ use RuntimeException;
 
 class UserController extends Controller
 {
+    use InteractsWithCurrentUser;
+
     public function index(): Response
     {
         return Inertia::render('admin/Users', [
@@ -36,6 +41,8 @@ class UserController extends Controller
                     'email' => $user->email,
                     'is_admin' => $user->is_admin,
                     'application_ids' => $user->applications->pluck('id'),
+                    'invited' => $user->invitation_token !== null,
+                    'accepted' => $user->invitation_accepted_at !== null,
                 ]),
             'applications' => Application::orderBy('name')->get(['id', 'name', 'slug', 'active']),
             'adminCount' => User::where('is_admin', true)->count(),
@@ -88,11 +95,26 @@ class UserController extends Controller
         return back()->with('status', 'Signed out everywhere and revoked all tokens.');
     }
 
-    public function store(StoreUserRequest $request, CreateUser $createUser): RedirectResponse
+    public function store(StoreUserRequest $request, CreateUser $createUser, InviteUser $inviteUser): RedirectResponse
     {
-        $createUser->handle($request->validated());
+        $user = $createUser->handle($request->validated());
+
+        // Scripted setup should not send mail, so inviting is opt-in rather
+        // than something creating a user always does.
+        if ($request->boolean('invite')) {
+            $inviteUser->handle($user, $this->currentUser($request));
+
+            return back()->with('status', 'User created and invited.');
+        }
 
         return back()->with('status', 'User created.');
+    }
+
+    public function invite(Request $request, User $user, InviteUser $inviteUser): RedirectResponse
+    {
+        $inviteUser->handle($user, $this->currentUser($request));
+
+        return back()->with('status', 'Invitation sent.');
     }
 
     public function updateAccess(UpdateAccessRequest $request, User $user, SetApplicationAccess $setAccess, RevokeTokensForLostAccess $revokeTokens): RedirectResponse
