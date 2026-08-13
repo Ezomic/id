@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LogoutDeliveryController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\ReauthenticateController;
 use App\Http\Controllers\Auth\RecoveryCodeController;
@@ -49,6 +50,10 @@ Route::middleware('guest')->group(function () {
     Route::post('login/recovery-code', [RecoveryCodeController::class, 'redeem'])
         ->middleware('throttle:login')
         ->name('login.recovery-code');
+
+    Route::get('invitations/{token}', [InvitationController::class, 'accept'])
+        ->middleware('throttle:login')
+        ->name('invitations.accept');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -74,6 +79,7 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::post('users', [UserController::class, 'store'])->name('users.store');
+    Route::post('users/{user}/invite', [UserController::class, 'invite'])->name('users.invite');
     Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('users/{user}/access', [UserController::class, 'updateAccess'])->name('users.access.update');
     Route::put('users/{user}/role', [UserController::class, 'updateRole'])->middleware('reauth')->name('users.role.update');

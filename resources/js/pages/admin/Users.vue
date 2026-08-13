@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { show, store, index as usersIndex } from '@/routes/admin/users';
+import { invite, show, store, index as usersIndex } from '@/routes/admin/users';
 import { update as updateAccess } from '@/routes/admin/users/access';
 import { update as updateRole } from '@/routes/admin/users/role';
 
@@ -32,6 +32,8 @@ interface AdminUser {
     email: string;
     is_admin: boolean;
     application_ids: number[];
+    invited: boolean;
+    accepted: boolean;
 }
 
 const props = defineProps<{
@@ -39,6 +41,10 @@ const props = defineProps<{
     applications: Application[];
     adminCount: number;
 }>();
+
+function sendInvite(user: AdminUser) {
+    router.post(invite(user.id).url, {}, { preserveScroll: true });
+}
 
 function toggleRole(user: AdminUser) {
     router.put(updateRole(user.id).url, {}, { preserveScroll: true });
@@ -54,11 +60,13 @@ const createForm = useForm<{
     name: string;
     email: string;
     is_admin: boolean;
+    invite: boolean;
     applications: number[];
 }>({
     name: '',
     email: '',
     is_admin: false,
+    invite: true,
     applications: [],
 });
 
@@ -141,6 +149,11 @@ function saveAccess(user: AdminUser) {
                         <span>Administrator</span>
                     </Label>
 
+                    <Label class="flex items-center gap-2">
+                        <Checkbox v-model="createForm.invite" />
+                        <span>Email them an invitation</span>
+                    </Label>
+
                     <div class="grid gap-2">
                         <span class="text-sm font-medium">App access</span>
                         <div class="flex flex-wrap gap-3">
@@ -219,6 +232,13 @@ function saveAccess(user: AdminUser) {
                                     Sessions &amp; apps
                                 </Button>
                             </Link>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                @click="sendInvite(user)"
+                            >
+                                {{ user.invited ? 'Resend invite' : 'Invite' }}
+                            </Button>
                             <Button
                                 size="sm"
                                 variant="ghost"

@@ -27,6 +27,9 @@ use Laravel\Passport\HasApiTokens;
  * @property Carbon|null $pending_email_expires_at
  * @property Carbon|null $recovery_codes_acknowledged_at
  * @property Carbon|null $passkey_prompt_dismissed_at
+ * @property string|null $invitation_token
+ * @property Carbon|null $invitation_expires_at
+ * @property Carbon|null $invitation_accepted_at
  * @property bool $is_admin
  * @property string|null $login_code_hash
  * @property Carbon|null $login_code_expires_at
@@ -36,7 +39,7 @@ use Laravel\Passport\HasApiTokens;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'email', 'is_admin'])]
-#[Hidden(['login_code_hash', 'pending_email_token', 'remember_token'])]
+#[Hidden(['login_code_hash', 'pending_email_token', 'invitation_token', 'remember_token'])]
 class User extends Authenticatable implements OAuthenticatable, PasskeyUser
 {
     public const PASSKEY_PROMPT_SNOOZE_DAYS = 30;
@@ -175,6 +178,8 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
             'pending_email_expires_at' => 'datetime',
             'recovery_codes_acknowledged_at' => 'datetime',
             'passkey_prompt_dismissed_at' => 'datetime',
+            'invitation_expires_at' => 'datetime',
+            'invitation_accepted_at' => 'datetime',
             'login_code_expires_at' => 'datetime',
             'login_code_attempts' => 'integer',
             'is_admin' => 'boolean',
