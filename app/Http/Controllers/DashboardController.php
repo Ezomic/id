@@ -24,6 +24,10 @@ class DashboardController extends Controller
         /** @var Collection<int, ApplicationUser> $pivots */
         $pivots = ApplicationUser::where('user_id', $user->id)->get()->keyBy('application_id');
         $accessibleIds = $user->accessibleApplicationIds();
+
+        // Admins are auto-granted on arrival, so showing a registered app as
+        // locked would be a claim the next click disproves. See ID-80.
+        $launchesAnything = $user->is_admin;
         $statuses = app(StatusReader::class)->statesBySlug();
         $pendingRequestIds = AccessRequest::where('user_id', $user->id)
             ->pending()
@@ -33,7 +37,7 @@ class DashboardController extends Controller
         $applications = Application::where('active', true)
             ->orderBy('name')
             ->get()
-            ->map(function (Application $app) use ($pivots, $accessibleIds, $statuses, $pendingRequestIds) {
+            ->map(function (Application $app) use ($pivots, $accessibleIds, $launchesAnything, $statuses, $pendingRequestIds) {
                 $pivot = $pivots->get($app->id);
 
                 return [
@@ -45,7 +49,7 @@ class DashboardController extends Controller
                     'accent' => $app->accent,
                     'launch_url' => $app->launch_url,
                     'category' => $app->category,
-                    'can_access' => $accessibleIds->contains($app->id),
+                    'can_access' => $launchesAnything || $accessibleIds->contains($app->id),
                     'pinned' => (bool) $pivot?->pinned,
                     'position' => $pivot?->position,
                     'status' => $statuses[strtolower($app->slug)] ?? null,
@@ -76,7 +80,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'applications' => $applications->sortBy($byPosition)->sortBy($pinFirst)->values(),
-            'accessibleCount' => $accessibleIds->count(),
+            'accessibleCount' => $applications->where('can_access', true)->count(),
             'bookmarks' => $bookmarks->sortBy($byPosition)->sortBy($pinFirst)->values(),
             'recentApps' => $this->recentApps($pivots),
         ]);

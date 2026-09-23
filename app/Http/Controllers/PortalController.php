@@ -23,7 +23,7 @@ class PortalController extends Controller
     {
         $user = $this->currentUser($request);
 
-        abort_unless($user->canAccess($application) && $application->launch_url !== null, 403);
+        abort_unless($user->canLaunch($application) && $application->launch_url !== null, 403);
 
         $user->applications()->updateExistingPivot($application->id, [
             'last_launched_at' => Carbon::now(),
