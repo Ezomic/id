@@ -167,6 +167,18 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
     }
 
     /**
+     * Whether the portal should offer this application as launchable. Wider
+     * than canAccess() by exactly the admin auto-grant: an admin arriving at a
+     * newly registered app is connected by AutoGrantApplicationAccess during
+     * the userinfo call, so refusing the launch here only deadlocks them out
+     * of an app they are about to be granted anyway. See ID-80.
+     */
+    public function canLaunch(Application $application): bool
+    {
+        return $this->canAccess($application) || ($this->is_admin && $application->active);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
