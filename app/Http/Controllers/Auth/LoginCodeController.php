@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\RecordFailedSignIn;
@@ -10,6 +12,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoginCodeController extends Controller
 {
@@ -32,7 +36,7 @@ class LoginCodeController extends Controller
             ->with('status', 'If that email belongs to an account, a login code is on its way.');
     }
 
-    public function verify(Request $request, VerifyLoginCode $verifyLoginCode, RecordFailedSignIn $recordFailure): RedirectResponse
+    public function verify(Request $request, VerifyLoginCode $verifyLoginCode, RecordFailedSignIn $recordFailure): Response
     {
         $request->validate([
             'email' => ['required', 'email'],
@@ -46,7 +50,10 @@ class LoginCodeController extends Controller
             Auth::login($user, remember: true);
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            // A full page visit, not a redirect the form's XHR would follow: when
+            // the sign-in began at an app, the intended URL is /oauth/authorize,
+            // which redirects to that app's origin and fails the CORS preflight.
+            return Inertia::location(redirect()->intended(route('dashboard', absolute: false)));
         }
 
         $recordFailure->handle($user, 'email_code');
