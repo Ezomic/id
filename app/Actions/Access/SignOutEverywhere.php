@@ -14,12 +14,14 @@ final class SignOutEverywhere
     public function __construct(
         private readonly RevokeUserTokens $revokeUserTokens,
         private readonly NotifyClientsOfLogout $notifyClients,
+        private readonly ForgetRememberedBrowsers $forgetBrowsers,
     ) {}
 
     /**
      * Offboarding or a suspected compromise used to mean working directly on the
-     * production database. Kills the browser sessions at ID, every OAuth
-     * credential the consumer apps hold, and the consumers' own sessions.
+     * production database. Kills the browser sessions at ID, remembered ones
+     * included, every OAuth credential the consumer apps hold, and the
+     * consumers' own sessions.
      *
      * The Logout event is deliberately not used here. It carries no user scope,
      * so PropagateLogout reads the session id off the current request, and the
@@ -29,6 +31,7 @@ final class SignOutEverywhere
     public function handle(User $user): void
     {
         DB::table('sessions')->where('user_id', $user->id)->delete();
+        $this->forgetBrowsers->handle($user);
 
         $notifications = $this->notifyClients->handle($user);
 

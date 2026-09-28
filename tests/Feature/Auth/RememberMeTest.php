@@ -7,10 +7,12 @@ use App\Actions\Auth\GenerateRecoveryCodes;
 use App\Models\SignInEvent;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Laravel\Passport\Passport;
 
 function recallerName(): string
 {
@@ -117,4 +119,94 @@ it('honours a cookie hashed from the null password', function () {
     $cookie = $user->id.'|'.$user->remember_token.'|'.Auth::guard('web')->hashPasswordForCookie(null);
 
     expectRestored($user, returnWithCookie($cookie));
+});
+
+it('ends remembered browsers when an admin signs the user out everywhere', function () {
+    $user = User::factory()->create();
+    $cookie = rememberedSignIn($user);
+
+    sessionExpires();
+    confirmSession();
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.users.sign-out', $user))
+        ->assertRedirect();
+
+    returnWithCookie($cookie)->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
+it('ends ID\'s own sessions and remembered browsers when an app signs the user out of the estate', function () {
+    $user = User::factory()->create();
+    $cookie = rememberedSignIn($user);
+    DB::table('sessions')->insert([
+        'id' => 'laptop-session',
+        'user_id' => $user->id,
+        'ip_address' => '203.0.113.10',
+        'user_agent' => 'Mozilla/5.0',
+        'payload' => 'x',
+        'last_activity' => time(),
+    ]);
+
+    sessionExpires();
+    Passport::actingAs($user);
+    $this->postJson('/api/sso/logout')->assertOk();
+
+    // auth:api left api as the default guard for the rest of this test, and a
+    // browser coming back is looked up through web.
+    app('auth')->setDefaultDriver('web');
+
+    expect(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeFalse();
+    returnWithCookie($cookie)->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
+it('ends the revoked browser but keeps the one revoking it remembered', function () {
+    $user = User::factory()->create();
+    $phone = rememberedSignIn($user);
+    DB::table('sessions')->insert([
+        'id' => 'phone-session',
+        'user_id' => $user->id,
+        'ip_address' => '203.0.113.10',
+        'user_agent' => 'Mozilla/5.0',
+        'payload' => 'x',
+        'last_activity' => time(),
+    ]);
+
+    $laptop = rememberedSignIn($user);
+    $response = $this->withCookie(recallerName(), $laptop)
+        ->delete(route('sessions.destroy', ['id' => 'phone-session']))
+        ->assertRedirect();
+    $this->assertAuthenticatedAs($user);
+    $renewed = rememberCookieFrom($response);
+
+    returnWithCookie($phone)->assertRedirect(route('login'));
+    $this->assertGuest();
+
+    expectRestored($user, returnWithCookie($renewed));
+});
+
+it('ends the other browsers but keeps the one signing them out remembered', function () {
+    $user = User::factory()->create();
+    $phone = rememberedSignIn($user);
+
+    $laptop = rememberedSignIn($user);
+    $response = $this->withCookie(recallerName(), $laptop)
+        ->delete(route('sessions.destroyOthers'))
+        ->assertRedirect();
+    $this->assertAuthenticatedAs($user);
+    $renewed = rememberCookieFrom($response);
+
+    returnWithCookie($phone)->assertRedirect(route('login'));
+    $this->assertGuest();
+
+    expectRestored($user, returnWithCookie($renewed));
+});
+
+it('does not start remembering a browser that signed in without it', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->delete(route('sessions.destroyOthers'))
+        ->assertRedirect()
+        ->assertCookieMissing(recallerName());
 });

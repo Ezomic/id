@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Access\ForgetRememberedBrowsers;
 use App\Concerns\InteractsWithCurrentUser;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
@@ -36,7 +39,7 @@ class SessionController extends Controller
         return Inertia::render('settings/Sessions', ['sessions' => $sessions]);
     }
 
-    public function destroy(Request $request, string $id): RedirectResponse
+    public function destroy(Request $request, string $id, ForgetRememberedBrowsers $forgetBrowsers): RedirectResponse
     {
         // The current session must never be killed silently — the user would
         // be signed out of the very page they are acting from with no warning.
@@ -46,20 +49,32 @@ class SessionController extends Controller
             ]);
         }
 
+        $user = $this->currentUser($request);
+
         DB::table('sessions')
-            ->where('user_id', $this->currentUser($request)->id)
+            ->where('user_id', $user->id)
             ->where('id', $id)
             ->delete();
+
+        // The revoked browser's cookie cannot be ended on its own, so every
+        // other remembered browser loses its cookie too and keeps only its live
+        // session. Leaving the cookie would let the revoked browser straight
+        // back in, which makes the button do nothing.
+        $forgetBrowsers->handle($user, except: $request);
 
         return back()->with('status', 'Session revoked.');
     }
 
-    public function destroyOthers(Request $request): RedirectResponse
+    public function destroyOthers(Request $request, ForgetRememberedBrowsers $forgetBrowsers): RedirectResponse
     {
+        $user = $this->currentUser($request);
+
         DB::table('sessions')
-            ->where('user_id', $this->currentUser($request)->id)
+            ->where('user_id', $user->id)
             ->where('id', '!=', $request->session()->getId())
             ->delete();
+
+        $forgetBrowsers->handle($user, except: $request);
 
         return back()->with('status', 'All other sessions were signed out.');
     }
