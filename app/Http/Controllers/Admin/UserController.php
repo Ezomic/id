@@ -127,6 +127,7 @@ class UserController extends Controller
             ->map(fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)
             ->values()
             ->all();
+        $reachableBefore = $user->accessibleApplicationIds()->all();
 
         $setAccess->handle($user, $after);
 
@@ -138,7 +139,7 @@ class UserController extends Controller
             AccessAudit::log('revoke', ['subject_user_id' => $user->id, 'application_id' => $applicationId]);
         }
 
-        $revokeTokens->handle($user->fresh() ?? $user);
+        $revokeTokens->handle($user->fresh() ?? $user, $reachableBefore);
 
         return back()->with('status', 'Access updated.');
     }

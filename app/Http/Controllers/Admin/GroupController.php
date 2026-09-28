@@ -68,6 +68,10 @@ class GroupController extends Controller
         $afterUsers = $this->intList($request->collect('users')->all());
         $afterApps = $this->intList($request->collect('applications')->all());
 
+        // Members removed from the group and members who kept their seat while
+        // the group lost an app both come out the other side with less access.
+        $affected = $this->reachableBefore(array_unique([...$beforeUsers, ...$afterUsers]));
+
         $group->users()->sync($afterUsers);
         $group->applications()->sync($afterApps);
 
@@ -84,31 +88,45 @@ class GroupController extends Controller
             AccessAudit::log('group_app_revoke', ['group_id' => $group->id, 'application_id' => $applicationId]);
         }
 
-        // Members removed from the group and members who kept their seat while
-        // the group lost an app both come out the other side with less access.
-        $this->revokeLostTokens(array_unique([...$beforeUsers, ...$afterUsers]), $revokeTokens);
+        $this->revokeLostAccess($affected, $revokeTokens);
 
         return back()->with('status', 'Group updated.');
     }
 
     public function destroy(Group $group, RevokeTokensForLostAccess $revokeTokens): RedirectResponse
     {
-        $members = $this->intList($group->users()->pluck('users.id')->all());
+        $members = $this->reachableBefore($this->intList($group->users()->pluck('users.id')->all()));
 
         $group->delete();
 
-        $this->revokeLostTokens($members, $revokeTokens);
+        $this->revokeLostAccess($members, $revokeTokens);
 
         return back()->with('status', 'Group deleted.');
     }
 
     /**
+     * Taken before the change, since afterwards nothing records what a user
+     * could reach through this group.
+     *
      * @param  array<int, int>  $userIds
+     * @return array<int, array{User, array<int, int>}>
      */
-    private function revokeLostTokens(array $userIds, RevokeTokensForLostAccess $revokeTokens): void
+    private function reachableBefore(array $userIds): array
     {
-        foreach (User::query()->whereIn('id', $userIds)->get() as $user) {
-            $revokeTokens->handle($user);
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->get()
+            ->map(fn (User $user): array => [$user, $user->accessibleApplicationIds()->all()])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, array{User, array<int, int>}>  $reachableBefore
+     */
+    private function revokeLostAccess(array $reachableBefore, RevokeTokensForLostAccess $revokeTokens): void
+    {
+        foreach ($reachableBefore as [$user, $applicationIds]) {
+            $revokeTokens->handle($user, $applicationIds);
         }
     }
 

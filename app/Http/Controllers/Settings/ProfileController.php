@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Actions\Access\RevokeUserTokens;
 use App\Actions\Auth\NotifyClientsOfEvent;
+use App\Actions\Settings\DeleteAccount;
 use App\Actions\Settings\RequestEmailChange;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
@@ -74,18 +74,16 @@ class ProfileController extends Controller
     /**
      * Delete the user's profile.
      */
-    public function destroy(ProfileDeleteRequest $request, RevokeUserTokens $revokeTokens): RedirectResponse
+    public function destroy(ProfileDeleteRequest $request, DeleteAccount $deleteAccount): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
 
-        // The users row goes away but Passport rows are not cascaded, so without
-        // this the deleted account's tokens stay valid at every consumer app.
-        $revokeTokens->handle($user);
-
+        // Before the delete: signing out saves the user to cycle the remember
+        // token, and saving a deleted model inserts the row again.
         Auth::logout();
 
-        $user->delete();
+        $deleteAccount->handle($user);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
