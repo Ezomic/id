@@ -1,5 +1,6 @@
 <?php
 
+use App\Listeners\PropagateLogout;
 use App\Models\Application;
 use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
@@ -98,6 +99,29 @@ it('notifies every authorized consumer on logout', function () {
 
     Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
     Http::assertSent(fn ($request) => $request->url() === 'https://billr.test/auth/sso/logout');
+});
+
+it('propagates one logout exactly once per client', function () {
+    Http::fake();
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $zero = authorizedApp($user, 'zero');
+    $billr = authorizedApp($user, 'billr');
+
+    // The dispatcher resolves a class listener from the container on every run.
+    $runs = 0;
+    $this->app->resolving(PropagateLogout::class, function () use (&$runs): void {
+        $runs++;
+    });
+
+    $this->post(route('logout'))->assertRedirect();
+
+    expect($runs)->toBe(1)
+        ->and(LogoutNotification::where('application_id', $zero->id)->count())->toBe(1)
+        ->and(LogoutNotification::where('application_id', $billr->id)->count())->toBe(1);
+
+    Http::assertSentCount(2);
 });
 
 it('signs the notification with the application logout secret', function () {
