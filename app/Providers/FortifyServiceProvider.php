@@ -41,19 +41,23 @@ class FortifyServiceProvider extends ServiceProvider
         // Keyed on the calling client, not the IP: the callers are seven
         // server-side apps, so an IP limit would meter the droplet rather than
         // the client, and one compromised secret would be bounded by nothing.
-        RateLimiter::for('portal-lookups', function (Request $request) {
-            $guard = Auth::guard('api');
-            $client = $guard instanceof TokenGuard ? $guard->client() : null;
-            $clientKey = $client?->getKey();
-            $key = is_scalar($clientKey) ? (string) $clientKey : (string) $request->ip();
+        RateLimiter::for('portal-lookups', fn (Request $request) => Limit::perMinute(60)->by('portal-lookups:'.$this->clientKey($request)));
 
-            return Limit::perMinute(60)->by('portal-lookups:'.$key);
-        });
+        RateLimiter::for('estate-reads', fn (Request $request) => Limit::perMinute(30)->by('estate-reads:'.$this->clientKey($request)));
 
         RateLimiter::for('passkeys', function (Request $request) {
             $identifier = $request->string('credential.id')->value() ?: $request->session()->getId();
 
             return Limit::perMinute(10)->by($identifier.'|'.$request->ip());
         });
+    }
+
+    private function clientKey(Request $request): string
+    {
+        $guard = Auth::guard('api');
+        $client = $guard instanceof TokenGuard ? $guard->client() : null;
+        $clientKey = $client?->getKey();
+
+        return is_scalar($clientKey) ? (string) $clientKey : (string) $request->ip();
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\EstateController;
 use App\Http\Controllers\Api\EstateLogoutController;
 use App\Http\Controllers\Api\PortalAppsController;
 use App\Http\Controllers\Api\UserInfoController;
@@ -12,3 +13,5 @@ Route::get('/userinfo', UserInfoController::class)->middleware('auth:api');
 Route::post('/sso/logout', EstateLogoutController::class)->middleware('auth:api');
 
 Route::post('/portal/apps', PortalAppsController::class)->middleware(['client', 'throttle:portal-lookups']);
+
+Route::get('/admin/estate', EstateController::class)->middleware(['client:estate:read', 'throttle:estate-reads']);

@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
  * @property bool $pinned
  * @property int|null $position
  * @property Carbon|null $last_launched_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class ApplicationUser extends Pivot
 {

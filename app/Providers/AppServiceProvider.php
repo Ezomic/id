@@ -53,10 +53,13 @@ class AppServiceProvider extends ServiceProvider
         // Two scopes, not a taxonomy. The line worth drawing is between "who
         // this user is" and "what else they can reach", because the second is
         // what leaks the shape of the estate to every app that asks.
+        // estate:read is not one of them: it is a client-credentials scope for
+        // reading the whole estate, never on a user's token. See OAuthClient.
         Passport::tokensCan([
             'openid' => 'Confirm who you are',
             'identity' => 'Your name and email address',
             'estate' => 'Which Thijssensoftware apps you can reach',
+            OAuthClient::ESTATE_READ => 'Every registered app and who can reach it',
         ]);
         Passport::tokensExpireIn(now()->addMinutes(15));
         Passport::refreshTokensExpireIn(now()->addDays(30));
