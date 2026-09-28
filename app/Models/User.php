@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\UserFactory;
@@ -46,6 +48,19 @@ class User extends Authenticatable implements OAuthenticatable, PasskeyUser
 
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable;
+
+    /**
+     * There is no password column: ID signs people in with emailed codes and
+     * passkeys, so the inherited getter returns null. Since Laravel 13.32 the
+     * session guard refuses a remember-me cookie unless this is a string,
+     * which cut every sign-in down to the 120-minute session. The guard has
+     * always hashed this value into the cookie, reading the null as '', so
+     * cookies already handed out match again.
+     */
+    public function getAuthPassword(): string
+    {
+        return '';
+    }
 
     /**
      * The applications this user is allowed to access.
