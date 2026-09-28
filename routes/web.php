@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginCodeController;
 use App\Http\Controllers\Auth\ReauthenticateController;
 use App\Http\Controllers\Auth\RecoveryCodeController;
+use App\Http\Controllers\Auth\SignOutController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PortalController;
@@ -63,6 +64,10 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    // Same method, path and name as Fortify's sign-out, so it takes that
+    // route's place: the one registered last wins.
+    Route::post('logout', SignOutController::class)->name('logout');
+
     Route::get('reauthenticate', [ReauthenticateController::class, 'show'])->name('reauthenticate.show');
     Route::post('reauthenticate', [ReauthenticateController::class, 'confirm'])
         ->middleware('throttle:login')
