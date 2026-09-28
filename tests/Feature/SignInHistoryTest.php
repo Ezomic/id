@@ -57,6 +57,15 @@ it('records a sign-in with its method, device and network', function () {
         ->and($event->device_fingerprint)->toBe(hash('sha256', 'Chrome on macOS'));
 });
 
+it('writes exactly one row per sign-in', function () {
+    Notification::fake();
+    $user = codeUser();
+
+    loginWithCode($user)->assertRedirect(route('dashboard'));
+
+    expect(SignInEvent::where('user_id', $user->id)->count())->toBe(1);
+});
+
 it('does not email on the very first sign-in', function () {
     Notification::fake();
     $user = codeUser();
