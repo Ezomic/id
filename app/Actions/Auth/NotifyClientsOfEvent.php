@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * ID-48 built signed, retried, audited delivery and used it for exactly one
@@ -25,26 +26,18 @@ final class NotifyClientsOfEvent
     public function __construct(private readonly DeliverLogoutNotification $deliver) {}
 
     /**
-     * @param  list<int>|null  $applicationIds  Null means every app holding a token.
+     * Named applications are told whether or not a session ever signed in
+     * there: an app can hold API tokens for a user long after the ID session
+     * and its AuthorizedClient rows are gone. See ID-89.
+     *
+     * @param  array<int, int>|null  $applicationIds  Null means every app a session of the user signed in to.
      * @param  array<string, mixed>  $payload
      */
     public function handle(User $user, string $event, ?array $applicationIds = null, array $payload = []): void
     {
-        $clientIds = AuthorizedClient::query()
-            ->where('user_id', $user->id)
-            ->pluck('oauth_client_id')
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($clientIds === []) {
-            return;
-        }
-
-        $applications = Application::query()
-            ->whereIn('oauth_client_id', $clientIds)
-            ->when($applicationIds !== null, fn ($query) => $query->whereIn('id', $applicationIds ?? []))
-            ->get();
+        $applications = $applicationIds === null
+            ? $this->signedInApplications($user)
+            : Application::query()->whereIn('id', $applicationIds)->get();
 
         $ids = [];
         $legacySafe = LogoutNotification::isSafeForLegacyClients($event);
@@ -85,5 +78,20 @@ final class NotifyClientsOfEvent
                 $this->deliver->handle($notification);
             }
         });
+    }
+
+    /**
+     * @return Collection<int, Application>
+     */
+    private function signedInApplications(User $user): Collection
+    {
+        $clientIds = AuthorizedClient::query()
+            ->where('user_id', $user->id)
+            ->pluck('oauth_client_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        return Application::query()->whereIn('oauth_client_id', $clientIds)->get();
     }
 }

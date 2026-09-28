@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Actions\Admin;
 
 use App\Actions\Access\RevokeClientTokens;
+use App\Actions\Access\RevokeTokensForLostAccess;
 use App\Models\AccessAudit;
 use App\Models\Application;
+use App\Models\User;
 
 class UpdateApplication
 {
-    public function __construct(private readonly RevokeClientTokens $revokeClientTokens) {}
+    public function __construct(
+        private readonly RevokeClientTokens $revokeClientTokens,
+        private readonly RevokeTokensForLostAccess $revokeTokensForLostAccess,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -50,7 +55,28 @@ class UpdateApplication
         }
 
         if (array_key_exists('users', $data)) {
-            $application->users()->sync(array_values(array_map(fn (mixed $v): int => is_numeric($v) ? (int) $v : 0, is_array($data['users'] ?? null) ? $data['users'] : [])));
+            $this->syncUsers($application, array_values(array_map(fn (mixed $v): int => is_numeric($v) ? (int) $v : 0, is_array($data['users'] ?? null) ? $data['users'] : [])));
+        }
+    }
+
+    /**
+     * Taking someone off the list here is the same revoke as doing it from
+     * their user page, so the app has to hear about it the same way.
+     *
+     * @param  list<int>  $userIds
+     */
+    private function syncUsers(Application $application, array $userIds): void
+    {
+        $removed = $application->users()
+            ->whereNotIn('users.id', $userIds)
+            ->get()
+            ->map(fn (User $user): array => [$user, $user->accessibleApplicationIds()->all()])
+            ->all();
+
+        $application->users()->sync($userIds);
+
+        foreach ($removed as [$user, $reachableBefore]) {
+            $this->revokeTokensForLostAccess->handle($user, $reachableBefore);
         }
     }
 
