@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Access\ForgetRememberedBrowsers;
 use App\Actions\Access\RevokeUserTokens;
 use App\Actions\Auth\NotifyClientsOfLogout;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class EstateLogoutController extends Controller
@@ -17,6 +19,7 @@ class EstateLogoutController extends Controller
     public function __construct(
         private readonly NotifyClientsOfLogout $notifyClients,
         private readonly RevokeUserTokens $revokeTokens,
+        private readonly ForgetRememberedBrowsers $forgetBrowsers,
     ) {}
 
     /**
@@ -41,6 +44,12 @@ class EstateLogoutController extends Controller
         $notifications = $this->notifyClients->handle($user);
 
         $this->revokeTokens->handle($user);
+
+        // ID is part of the estate. Left signed in, its session or the
+        // remember-me cookie behind it would approve the next app visit
+        // without asking, which is the silent sign-in this exists to prevent.
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $this->forgetBrowsers->handle($user);
 
         $this->notifyClients->deliverAfterResponse($notifications);
 
