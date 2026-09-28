@@ -6,6 +6,7 @@ use App\Mail\LoginCodeMail;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Passport\ClientRepository;
 
 it('emails a login code to a known account', function () {
     Mail::fake();
@@ -125,4 +126,70 @@ it('clears the attempt counter on a successful sign-in', function () {
         ->assertRedirect(route('dashboard'));
 
     expect($user->fresh()->login_code_attempts)->toBe(0);
+});
+
+it('takes a sign-in that began at an app straight on to that app', function () {
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        name: 'Tracker',
+        redirectUris: ['https://tracker.test/auth/sso/callback'],
+        confidential: true,
+    );
+
+    $user = User::factory()->create([
+        'login_code_hash' => Hash::make('123456'),
+        'login_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $client->getKey(),
+        'redirect_uri' => 'https://tracker.test/auth/sso/callback',
+        'response_type' => 'code',
+        'scope' => '',
+        'state' => 'state',
+    ]))->assertRedirect(route('login'));
+
+    $authorize = session('url.intended');
+    expect($authorize)->toStartWith(url('/oauth/authorize?'));
+
+    // The code form is an Inertia XHR. A plain redirect would be followed by
+    // that XHR to the app's callback on another origin, where it fails CORS.
+    $this->post(
+        route('login.code.verify'),
+        ['email' => $user->email, 'code' => '123456'],
+        ['X-Inertia' => 'true'],
+    )
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', $authorize);
+
+    $this->get($authorize)->assertRedirectContains('https://tracker.test/auth/sso/callback?code=');
+});
+
+it('still redirects a plain form post to where the sign-in began', function () {
+    $user = User::factory()->create([
+        'login_code_hash' => Hash::make('123456'),
+        'login_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $authorize = url('/oauth/authorize?client_id=tracker&response_type=code');
+
+    $this->withSession(['url.intended' => $authorize])
+        ->post(route('login.code.verify'), ['email' => $user->email, 'code' => '123456'])
+        ->assertRedirect($authorize);
+});
+
+it('sends an Inertia sign-in with nowhere to return to on to the dashboard', function () {
+    $user = User::factory()->create([
+        'login_code_hash' => Hash::make('123456'),
+        'login_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->post(
+        route('login.code.verify'),
+        ['email' => $user->email, 'code' => '123456'],
+        ['X-Inertia' => 'true'],
+    )
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', route('dashboard'));
+
+    $this->assertAuthenticatedAs($user);
 });

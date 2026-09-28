@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RememberPasskeySignIn;
 use Laravel\Fortify\Features;
 
 $appUrl = config('app.url');
@@ -104,7 +105,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', RememberPasskeySignIn::class],
 
     /*
     |--------------------------------------------------------------------------

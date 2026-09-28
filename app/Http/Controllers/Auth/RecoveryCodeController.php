@@ -12,6 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class RecoveryCodeController extends Controller
 {
@@ -19,7 +21,7 @@ class RecoveryCodeController extends Controller
         Request $request,
         RedeemRecoveryCode $redeem,
         RecordFailedSignIn $recordFailure,
-    ): RedirectResponse {
+    ): Response {
         $request->validate([
             'email' => ['required', 'email'],
             'code' => ['required', 'string'],
@@ -38,7 +40,8 @@ class RecoveryCodeController extends Controller
             Auth::login($user, remember: true);
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            // A full page visit for the same reason as LoginCodeController::verify.
+            return Inertia::location(redirect()->intended(route('dashboard', absolute: false)));
         }
 
         if ($user !== null) {

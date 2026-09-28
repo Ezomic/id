@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { UrlMethodPair } from '@inertiajs/core';
-import { router } from '@inertiajs/vue3';
 import { usePasskeyVerify } from '@laravel/passkeys/vue';
 import { KeyRound } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
@@ -32,8 +31,11 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
               },
           }
         : {}),
+    // A full page load, not an Inertia visit: after a sign-in that began at an
+    // app the redirect is /oauth/authorize, which sends the browser on to that
+    // app's origin, and an XHR cannot follow it there.
     onSuccess: (response) => {
-        router.visit(response.redirect ?? '/dashboard');
+        window.location.assign(response.redirect ?? '/dashboard');
     },
 });
 
@@ -42,7 +44,7 @@ if (props.autofill !== false) {
     usePasskeyAutofill({
         optionsUrl: props.routes?.options.url ?? '/passkeys/login/options',
         submitUrl: props.routes?.submit.url ?? '/passkeys/login',
-        onSuccess: (redirect) => router.visit(redirect),
+        onSuccess: (redirect) => window.location.assign(redirect),
     });
 }
 </script>

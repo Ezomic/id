@@ -35,6 +35,24 @@ it('signs in with a recovery code', function () {
     $this->assertAuthenticatedAs($user);
 });
 
+it('takes an Inertia sign-in on to where it began with a full page visit', function () {
+    Notification::fake();
+    [$user, $codes] = userWithCodes();
+
+    $authorize = url('/oauth/authorize?client_id=tracker&response_type=code');
+
+    $this->withSession(['url.intended' => $authorize])
+        ->post(
+            route('login.recovery-code'),
+            ['email' => $user->email, 'code' => $codes[0]],
+            ['X-Inertia' => 'true'],
+        )
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', $authorize);
+
+    $this->assertAuthenticatedAs($user);
+});
+
 it('spends the code so it cannot be reused', function () {
     Notification::fake();
     [$user, $codes] = userWithCodes();
