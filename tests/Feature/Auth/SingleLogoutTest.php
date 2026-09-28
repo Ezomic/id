@@ -124,6 +124,31 @@ it('propagates one logout exactly once per client', function () {
     Http::assertSentCount(2);
 });
 
+it('propagates a sign-out that ends only this browser exactly once per client', function () {
+    Http::fake();
+    $user = User::factory()->create();
+    $this->actingAs($user);
+    $rememberToken = $user->remember_token;
+
+    $zero = authorizedApp($user, 'zero');
+    $billr = authorizedApp($user, 'billr');
+
+    $runs = 0;
+    $this->app->resolving(PropagateLogout::class, function () use (&$runs): void {
+        $runs++;
+    });
+
+    $this->post(route('logout'))->assertRedirect();
+
+    // An unchanged token is what keeps the user's other browsers signed in.
+    expect($user->fresh()?->remember_token)->toBe($rememberToken)
+        ->and($runs)->toBe(1)
+        ->and(LogoutNotification::where('application_id', $zero->id)->count())->toBe(1)
+        ->and(LogoutNotification::where('application_id', $billr->id)->count())->toBe(1);
+
+    Http::assertSentCount(2);
+});
+
 it('signs the notification with the application logout secret', function () {
     Http::fake();
     $user = User::factory()->create();

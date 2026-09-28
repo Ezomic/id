@@ -121,6 +121,45 @@ it('honours a cookie hashed from the null password', function () {
     expectRestored($user, returnWithCookie($cookie));
 });
 
+it('keeps the other browsers remembered when one browser signs out', function () {
+    $user = User::factory()->create();
+    $phone = rememberedSignIn($user);
+
+    $laptop = rememberedSignIn($user);
+    $this->withCookie(recallerName(), $laptop)
+        ->post(route('logout'))
+        ->assertRedirect()
+        ->assertCookieExpired(recallerName());
+    app('cookie')->flushQueuedCookies();
+
+    // What the laptop has left once its browser drops the expired cookie: a
+    // session that no longer knows the user.
+    app('auth')->forgetGuards();
+    $this->withCookie(recallerName(), '')->get(route('dashboard'))->assertRedirect(route('login'));
+    $this->assertGuest();
+
+    expectRestored($user, returnWithCookie($phone));
+});
+
+it('still ends a browser that outlived a sign-out elsewhere when the user is signed out everywhere', function () {
+    $user = User::factory()->create();
+    $phone = rememberedSignIn($user);
+
+    $laptop = rememberedSignIn($user);
+    $this->withCookie(recallerName(), $laptop)->post(route('logout'))->assertRedirect();
+    app('cookie')->flushQueuedCookies();
+    expectRestored($user, returnWithCookie($phone));
+
+    sessionExpires();
+    confirmSession();
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('admin.users.sign-out', $user))
+        ->assertRedirect();
+
+    returnWithCookie($phone)->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
 it('ends remembered browsers when an admin signs the user out everywhere', function () {
     $user = User::factory()->create();
     $cookie = rememberedSignIn($user);
