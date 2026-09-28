@@ -61,7 +61,9 @@ class RequireRecentAuthentication
         // are XHRs, which Laravel never records as the previous URL, so after
         // any in-app navigation that names the last full page load instead of
         // the page the admin is on. The header is the client's to write, so it
-        // only counts when it names a page of this app.
+        // only counts when it names a page of this app. No narrower list: any
+        // such page is a plain link away for anyone, so landing on one grants
+        // nothing a link would not.
         $referer = $request->headers->get('referer');
 
         if ($referer !== null && $this->isPageOfThisApp($request, $referer)) {
@@ -76,6 +78,10 @@ class RequireRecentAuthentication
         // A prefix match through the slash that ends the host, so no URL
         // parser decides where the host ends: userinfo, a port, a backslash or
         // a longer lookalike host all break the match instead of hiding in it.
+        // The request's own origin rather than APP_URL: the redirect to the
+        // prompt and every other URL this app builds follow the same Host
+        // header, so a forged Host is only stopped in front of the app, where
+        // the web server refuses names it does not serve.
         if (! str_starts_with($url, $request->getSchemeAndHttpHost().'/')) {
             return false;
         }
