@@ -7,7 +7,10 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpFoundation\Exception\RequestExceptionInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class RequireRecentAuthentication
 {
@@ -37,9 +40,53 @@ class RequireRecentAuthentication
             return $next($request);
         }
 
-        $request->session()->put('url.intended', $request->fullUrl());
+        $request->session()->put('url.intended', $this->returnTo($request));
 
         return redirect()->route('reauthenticate.show');
+    }
+
+    /**
+     * Both confirmation paths follow the intended URL with a GET, so a guarded
+     * PUT, POST or DELETE cannot be its own destination: it would answer 405,
+     * or land on whatever page shares its path. The page the action was taken
+     * from is where the admin can repeat it.
+     */
+    private function returnTo(Request $request): string
+    {
+        if ($request->isMethod('GET')) {
+            return $request->fullUrl();
+        }
+
+        // The Referer rather than the session's previous URL: Inertia visits
+        // are XHRs, which Laravel never records as the previous URL, so after
+        // any in-app navigation that names the last full page load instead of
+        // the page the admin is on. The header is the client's to write, so it
+        // only counts when it names a page of this app.
+        $referer = $request->headers->get('referer');
+
+        if ($referer !== null && $this->isPageOfThisApp($request, $referer)) {
+            return $referer;
+        }
+
+        return route('dashboard');
+    }
+
+    private function isPageOfThisApp(Request $request, string $url): bool
+    {
+        // A prefix match through the slash that ends the host, so no URL
+        // parser decides where the host ends: userinfo, a port, a backslash or
+        // a longer lookalike host all break the match instead of hiding in it.
+        if (! str_starts_with($url, $request->getSchemeAndHttpHost().'/')) {
+            return false;
+        }
+
+        try {
+            Route::getRoutes()->match(Request::create($url));
+        } catch (HttpExceptionInterface|RequestExceptionInterface) {
+            return false;
+        }
+
+        return true;
     }
 
     private function recentlyConfirmed(Request $request): bool
