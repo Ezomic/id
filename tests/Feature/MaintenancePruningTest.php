@@ -6,6 +6,7 @@ use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\SignInEvent;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -76,26 +77,30 @@ it('prunes access audits past the retention window', function () {
         ->and(AccessAudit::find($recent->id))->not->toBeNull();
 });
 
-it('prunes abandoned sessions from authorized_clients but keeps active ones', function () {
+it('prunes authorized_clients once the browser is no longer remembered, and not before', function () {
     $user = User::factory()->create();
+    $remembered = config()->integer('auth.guards.web.remember', 576000);
 
-    $abandoned = AuthorizedClient::create([
-        'user_id' => $user->id,
-        'sso_session_id' => 'abandoned',
-        'oauth_client_id' => Str::uuid()->toString(),
-    ]);
-    $abandoned->forceFill(['updated_at' => now()->subDays(AuthorizedClient::RETENTION_DAYS + 1)])->save();
+    $make = function (string $ssoSessionId, CarbonInterface $signedInAt) use ($user): AuthorizedClient {
+        $row = AuthorizedClient::create([
+            'user_id' => $user->id,
+            'sso_session_id' => $ssoSessionId,
+            'oauth_client_id' => Str::uuid()->toString(),
+        ]);
+        $row->forceFill(['updated_at' => $signedInAt])->save();
 
-    $active = AuthorizedClient::create([
-        'user_id' => $user->id,
-        'sso_session_id' => 'active',
-        'oauth_client_id' => Str::uuid()->toString(),
-    ]);
+        return $row;
+    };
+
+    $abandoned = $make('abandoned', now()->subMinutes($remembered)->subDay());
+    $stillRemembered = $make('still-remembered', now()->subMinutes($remembered)->addDay());
+    $recent = $make('recent', now());
 
     $this->artisan('model:prune', ['--model' => [AuthorizedClient::class]])->assertSuccessful();
 
     expect(AuthorizedClient::find($abandoned->id))->toBeNull()
-        ->and(AuthorizedClient::find($active->id))->not->toBeNull();
+        ->and(AuthorizedClient::find($stillRemembered->id))->not->toBeNull()
+        ->and(AuthorizedClient::find($recent->id))->not->toBeNull();
 });
 
 it('prunes delivered and abandoned logout notifications but never ones still owed', function () {

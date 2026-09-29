@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Which OAuth clients a given ID session has signed the user in to. Without this
@@ -23,20 +24,20 @@ class AuthorizedClient extends Model
 
     /**
      * Rows are deleted eagerly when a session logs out, so what accumulates here
-     * is sessions that were simply abandoned. There is no join back to the
-     * sessions table (sso_session_id is an opaque value held inside the session
-     * payload, not the framework session id), so age is the available signal.
+     * is browsers that were simply abandoned. There is no join back to the
+     * sessions table (sso_session_id is an opaque value the browser holds, not
+     * the framework session id), so age is the available signal.
      *
-     * Pruning is on updated_at rather than created_at: re-authorizing an app
-     * touches the row, so a session in daily use never ages out.
-     */
-    public const RETENTION_DAYS = 30;
-
-    /**
+     * The age that counts is the remember-me lifetime, from the browser's last
+     * sign-in to the app. id-client signs in with remember-me, so an app never
+     * comes back through authorize while its own cookie holds, and a shorter
+     * window forgets apps that are still signed in. The apps keep Laravel's
+     * default lifetime, as ID does.
+     *
      * @return Builder<static>
      */
     public function prunable(): Builder
     {
-        return static::query()->where('updated_at', '<', now()->subDays(self::RETENTION_DAYS));
+        return static::query()->where('updated_at', '<', now()->subMinutes(Config::integer('auth.guards.web.remember', 576000)));
     }
 }
