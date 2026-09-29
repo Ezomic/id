@@ -24,22 +24,30 @@ class PropagateLogout
      * consumer holds its own session, established once at the OAuth callback,
      * and never asks ID anything again. Tell them.
      *
-     * Scoped to this one session, so signing out on a laptop does not end the
-     * same user's sessions on their phone. Signing out of ID fires
+     * Scoped to this browser, across its remember-me restores, so signing out
+     * on a laptop does not end the same user's sessions on their phone. The
+     * browser's SSO session ends with it. Signing out of ID fires
      * CurrentDeviceLogout; account deletion and Passport's prompt=login still
      * fire Logout. Each fires one or the other, never both.
      */
     public function handle(Logout|CurrentDeviceLogout $event): void
     {
         $user = $event->user;
-        $sessionId = $this->ssoSessionId->existing($this->request);
 
-        if (! $user instanceof User || $sessionId === null) {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $sessionId = $this->ssoSessionId->existing($this->request, $user);
+
+        if ($sessionId === null) {
             return;
         }
 
         $this->notifyClients->deliverAfterResponse(
             $this->notifyClients->handle($user, $sessionId),
         );
+
+        $this->ssoSessionId->forget();
     }
 }

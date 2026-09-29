@@ -5,6 +5,9 @@ use App\Models\Application;
 use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\User;
+use App\Services\SsoSessionId;
+use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -53,6 +56,46 @@ function authorizedApp(User $user, string $slug = 'zero'): Application
     ])->assertOk();
 
     return $application;
+}
+
+/**
+ * Runs every later request the way a browser and a fresh server process would
+ * see it. The test app outlives a request, and so do its session store and
+ * cookie queue, so a request would otherwise still see what an earlier one put
+ * in the session after it was saved, or queued after its cookies were sent.
+ */
+function browserSession(): void
+{
+    app('events')->listen(RequestHandled::class, function (RequestHandled $event): void {
+        foreach ($event->response->headers->getCookies() as $cookie) {
+            test()->withUnencryptedCookie($cookie->getName(), $cookie->isCleared() ? '' : (string) $cookie->getValue());
+        }
+
+        app('cookie')->flushQueuedCookies();
+        app('session')->driver()->flush();
+    });
+}
+
+/**
+ * The 120-minute session is gone. The browser still has its other cookies,
+ * the remember-me one included.
+ */
+function sessionIdlesOut(): void
+{
+    test()->withUnencryptedCookie(app('session')->driver()->getName(), '');
+    app('auth')->forgetGuards();
+}
+
+function rememberedBrowser(User $user): void
+{
+    $user->forceFill(['remember_token' => Str::random(60)])->save();
+    $guard = Auth::guard('web');
+
+    test()->withCookie(
+        $guard->getRecallerName(),
+        $user->id.'|'.$user->remember_token.'|'.$guard->hashPasswordForCookie($user->getAuthPassword()),
+    );
+    test()->actingAs($user);
 }
 
 beforeEach(function () {
@@ -282,4 +325,88 @@ it('does nothing for a session that authorized no clients', function () {
 
     expect(LogoutNotification::count())->toBe(0);
     Http::assertNothingSent();
+});
+
+it('reaches the apps a session signed in to once that session is read back from storage', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    authorizedApp($user, 'zero');
+
+    $this->post(route('logout'))->assertRedirect();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+});
+
+it('reaches the apps a browser signed in to before a remember-me restore', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    rememberedBrowser($user);
+
+    authorizedApp($user, 'zero');
+
+    sessionIdlesOut();
+    $this->post(route('logout'))->assertRedirect();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+    expect(AuthorizedClient::where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('reaches the apps from before and after a remember-me restore alike', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    rememberedBrowser($user);
+
+    authorizedApp($user, 'zero');
+
+    sessionIdlesOut();
+    authorizedApp($user, 'billr');
+
+    $this->post(route('logout'))->assertRedirect();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+    Http::assertSent(fn ($request) => $request->url() === 'https://billr.test/auth/sso/logout');
+    expect(AuthorizedClient::where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('keeps apart the apps two people signed in to from the same browser', function () {
+    Http::fake();
+    browserSession();
+    $first = User::factory()->create();
+    $this->actingAs($first);
+    $zero = authorizedApp($first, 'zero');
+
+    // The first person's session ends without a sign-out, and the next person
+    // signs in on the same browser to the same app.
+    sessionIdlesOut();
+    $second = User::factory()->create();
+    $second->applications()->attach($zero->id);
+    $this->actingAs($second);
+    $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $zero->oauth_client_id,
+        'redirect_uri' => 'https://zero.test/auth/sso/callback',
+        'response_type' => 'code',
+        'scope' => '',
+    ]))->assertRedirect();
+
+    $this->post(route('logout'))->assertRedirect();
+
+    expect(AuthorizedClient::where('user_id', $first->id)->where('oauth_client_id', $zero->oauth_client_id)->exists())->toBeTrue()
+        ->and(LogoutNotification::where('user_id', $second->id)->count())->toBe(1)
+        ->and(LogoutNotification::where('user_id', $first->id)->exists())->toBeFalse();
+});
+
+it('forgets the browser\'s SSO session when it signs out', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    authorizedApp($user);
+
+    $this->post(route('logout'))->assertCookieExpired(SsoSessionId::COOKIE);
 });
