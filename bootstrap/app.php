@@ -4,12 +4,14 @@ use App\Actions\Auth\RecordFailedSignIn;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordAuthorizedClient;
 use App\Http\Middleware\RequireRecentAuthentication;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Laravel\Passkeys\Exceptions\InvalidPasskeyException;
 use Laravel\Passport\Http\Middleware\EnsureClientIsResourceOwner;
 
@@ -32,6 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        // Passport's configured middleware wraps the authorize route's own web
+        // group, so this one ran after the session was saved and the queued
+        // cookies were sent. The SSO session id it stores reached neither, and
+        // signing out found no apps to tell.
+        $middleware->appendToPriorityList(StartSession::class, RecordAuthorizedClient::class);
 
         $middleware->web(append: [
             HandleAppearance::class,

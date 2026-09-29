@@ -56,7 +56,7 @@ class RecordAuthorizedClient
 
         AuthorizedClient::query()->updateOrCreate(
             [
-                'sso_session_id' => $this->ssoSessionId->for($request),
+                'sso_session_id' => $this->ssoSessionId->for($request, $user),
                 'oauth_client_id' => $clientId,
             ],
             ['user_id' => $user->id],
