@@ -54,13 +54,15 @@ class RecordAuthorizedClient
             Cache::put('oidc.nonce:'.hash('sha256', $code), $nonce, now()->addMinutes(10));
         }
 
+        // Touched even when nothing else changed: updated_at is what pruning
+        // measures, and it has to mean the last sign-in, not the first.
         AuthorizedClient::query()->updateOrCreate(
             [
                 'sso_session_id' => $this->ssoSessionId->for($request, $user),
                 'oauth_client_id' => $clientId,
             ],
             ['user_id' => $user->id],
-        );
+        )->touch();
 
         return $response;
     }

@@ -373,6 +373,51 @@ it('reaches the apps from before and after a remember-me restore alike', functio
     expect(AuthorizedClient::where('user_id', $user->id)->exists())->toBeFalse();
 });
 
+it('reaches an app signed in to once, for as long as the browser stays remembered', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    rememberedBrowser($user);
+
+    // id-client signs in with remember-me, so the app keeps its own session
+    // and never comes back through authorize.
+    authorizedApp($user, 'zero');
+
+    $this->travel(config()->integer('auth.guards.web.remember', 576000) - 60 * 24)->minutes();
+    $this->artisan('model:prune', ['--model' => [AuthorizedClient::class]])->assertSuccessful();
+
+    sessionIdlesOut();
+    $this->post(route('logout'))->assertRedirect();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+});
+
+it('counts the remembered lifetime from the last sign-in to an app, not the first', function () {
+    Http::fake();
+    browserSession();
+    $user = User::factory()->create();
+    rememberedBrowser($user);
+
+    $zero = authorizedApp($user, 'zero');
+
+    $this->travel(config()->integer('auth.guards.web.remember', 576000) - 60 * 24)->minutes();
+    sessionIdlesOut();
+    $this->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $zero->oauth_client_id,
+        'redirect_uri' => 'https://zero.test/auth/sso/callback',
+        'response_type' => 'code',
+        'scope' => '',
+    ]))->assertRedirect();
+
+    $this->travel(2)->days();
+    $this->artisan('model:prune', ['--model' => [AuthorizedClient::class]])->assertSuccessful();
+
+    sessionIdlesOut();
+    $this->post(route('logout'))->assertRedirect();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://zero.test/auth/sso/logout');
+});
+
 it('keeps apart the apps two people signed in to from the same browser', function () {
     Http::fake();
     browserSession();
