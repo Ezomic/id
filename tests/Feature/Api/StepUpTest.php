@@ -5,6 +5,7 @@ use App\Http\Middleware\EnforceMaxAge;
 use App\Models\Application;
 use App\Models\LogoutNotification;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -260,7 +261,7 @@ it('does not put auth_time in the id token of a refresh', function () {
         ->and(claimsOf($refreshed['id_token'])->has('auth_time'))->toBeFalse();
 });
 
-it('does not let one user step up on the confirmation of another', function () {
+it('does not let a user who signs in on the same session inherit the previous confirmation', function () {
     [$application, $client] = stepUpApp();
     $alice = User::factory()->create();
     $bob = User::factory()->create();
@@ -271,11 +272,20 @@ it('does not let one user step up on the confirmation of another', function () {
     $request = stepUpRequest($client, ['max_age' => 60]);
     $aliceToken = stepUpExchange($client, locationQuery($this->get($request['url']))['code'], $request['verifier']);
 
-    $this->flushSession();
-    $this->actingAs($bob);
-    $this->get($request['url'])->assertRedirect(route('reauthenticate.show'));
+    request()->setLaravelSession(app('session.store'));
+    Auth::guard('web')->login($bob);
 
+    expect(session('auth.password_confirmed_at'))->toBeNull();
+    $this->get($request['url'])->assertRedirect(route('reauthenticate.show'));
     expect(claimsOf($aliceToken['id_token'])->get('sub'))->toBe((string) $alice->id);
+});
+
+it('checks the application scope allowlist before it asks for a step-up', function () {
+    [$application, $client] = stepUpApp();
+    $application->forceFill(['allowed_scopes' => ['identity']])->save();
+    $this->actingAs(User::factory()->create());
+
+    $this->get(stepUpRequest($client, ['max_age' => 60])['url'])->assertForbidden();
 });
 
 it('only answers an invalid step-up request to a redirect uri the client registered', function () {

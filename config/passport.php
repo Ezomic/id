@@ -20,7 +20,7 @@ return [
 
     'guard' => 'web',
 
-    'middleware' => [RecordAuthorizedClient::class, EnforceMaxAge::class, EnforceApplicationScopes::class, AttachIdToken::class],
+    'middleware' => [RecordAuthorizedClient::class, EnforceApplicationScopes::class, EnforceMaxAge::class, AttachIdToken::class],
 
     /*
     |--------------------------------------------------------------------------
