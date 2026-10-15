@@ -21,6 +21,11 @@ class RecordSignIn
 
     public function handle(Login $event): void
     {
+        // A confirmation belongs to whoever entered the credential, and the
+        // session key carries no user. Clearing it on sign-in means a new
+        // identity on a surviving session cannot inherit it.
+        $this->request->session()->forget('auth.password_confirmed_at');
+
         $userId = $event->user->getAuthIdentifier();
         $userAgent = $this->request->userAgent();
         $ip = $this->request->ip();

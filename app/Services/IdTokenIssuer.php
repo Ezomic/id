@@ -36,9 +36,12 @@ final class IdTokenIssuer
      * only `identity` does not learn the estate through a different door than
      * the one ID-70 closed on userinfo.
      *
+     * `auth_time` is when the user last re-entered a credential, present only
+     * when the app asked for a `max_age` and ID verified it.
+     *
      * @param  list<string>  $scopes
      */
-    public function issue(User $user, string $audience, array $scopes, ?string $nonce = null): string
+    public function issue(User $user, string $audience, array $scopes, ?string $nonce = null, ?int $authTime = null): string
     {
         $now = CarbonImmutable::now();
 
@@ -61,6 +64,10 @@ final class IdTokenIssuer
         // what stops one being replayed into a different sign-in.
         if ($nonce !== null && $nonce !== '') {
             $builder = $builder->withClaim('nonce', $nonce);
+        }
+
+        if ($authTime !== null) {
+            $builder = $builder->withClaim('auth_time', $authTime);
         }
 
         return $builder

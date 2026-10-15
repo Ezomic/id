@@ -34,7 +34,7 @@ class OidcDiscoveryController extends Controller
             'id_token_signing_alg_values_supported' => ['RS256'],
             'token_endpoint_auth_methods_supported' => ['client_secret_post', 'client_secret_basic'],
             'code_challenge_methods_supported' => ['S256'],
-            'claims_supported' => ['sub', 'name', 'email', 'email_verified', 'nonce', 'aud', 'iss', 'exp', 'iat'],
+            'claims_supported' => ['sub', 'name', 'email', 'email_verified', 'nonce', 'auth_time', 'aud', 'iss', 'exp', 'iat'],
         ]);
     }
 
