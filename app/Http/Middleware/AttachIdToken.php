@@ -92,6 +92,7 @@ class AttachIdToken
             is_scalar($client) ? (string) $client : '',
             $scopes,
             $this->nonceFor($request),
+            $this->authTimeFor($request),
         );
     }
 
@@ -107,6 +108,19 @@ class AttachIdToken
         $nonce = Cache::pull($key);
 
         return is_string($nonce) ? $nonce : null;
+    }
+
+    private function authTimeFor(Request $request): ?int
+    {
+        $code = $request->input('code');
+
+        if (! is_string($code) || $code === '') {
+            return null;
+        }
+
+        $authTime = Cache::pull('oidc.auth_time:'.hash('sha256', $code));
+
+        return is_int($authTime) ? $authTime : null;
     }
 
     private function merge(Response $response, string $idToken): Response
