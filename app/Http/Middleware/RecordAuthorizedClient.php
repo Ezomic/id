@@ -54,6 +54,14 @@ class RecordAuthorizedClient
             Cache::put('oidc.nonce:'.hash('sha256', $code), $nonce, now()->addMinutes(10));
         }
 
+        // Same hand-off for the time the user last proved who they are, which
+        // only exists when EnforceMaxAge verified a max_age request.
+        $authTime = $request->attributes->get(EnforceMaxAge::ATTRIBUTE);
+
+        if (is_int($authTime)) {
+            Cache::put('oidc.auth_time:'.hash('sha256', $code), $authTime, now()->addMinutes(10));
+        }
+
         // Touched even when nothing else changed: updated_at is what pruning
         // measures, and it has to mean the last sign-in, not the first.
         AuthorizedClient::query()->updateOrCreate(
