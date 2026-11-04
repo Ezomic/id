@@ -11,6 +11,7 @@ use Laravel\Passport\Scope;
  *
  * @property list<string> $redirect_uris
  * @property list<string>|null $scopes
+ * @property list<string>|null $grant_types
  */
 class OAuthClient extends PassportClient
 {

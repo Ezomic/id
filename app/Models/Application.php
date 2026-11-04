@@ -56,6 +56,18 @@ class Application extends Model
         return $this->belongsTo(OAuthClient::class, 'oauth_client_id');
     }
 
+    /**
+     * Whether users sign in to this app through ID. An app that keeps its own
+     * sign-in registers a client for the portal switcher only (client
+     * credentials), so there is no callback or back-channel logout to expect.
+     */
+    public function signsInThroughId(): bool
+    {
+        $grants = $this->oauthClient?->grant_types;
+
+        return is_array($grants) && in_array('authorization_code', $grants, true);
+    }
+
     public function redirectUri(): ?string
     {
         return $this->oauthClient?->redirect_uris[0] ?? null;

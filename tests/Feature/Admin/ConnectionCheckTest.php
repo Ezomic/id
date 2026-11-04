@@ -223,3 +223,90 @@ it('runs from the admin screen and is closed to non-admins', function () {
         ->post(route('admin.applications.check', $application))
         ->assertForbidden();
 });
+
+function portalOnlyApp(array $overrides = []): Application
+{
+    $client = app(ClientRepository::class)->createClientCredentialsGrantClient('Pitch');
+
+    return Application::create([
+        'name' => 'Pitch',
+        'slug' => 'pitch',
+        'launch_url' => 'https://pitch.test',
+        'oauth_client_id' => $client->getKey(),
+        'active' => true,
+        ...$overrides,
+    ]);
+}
+
+it('does not expect SSO endpoints from an app that only uses the portal', function () {
+    Http::fake();
+
+    $result = app(CheckApplicationConnection::class)->handle(portalOnlyApp());
+
+    expect($result['healthy'])->toBeTrue()
+        ->and(array_column($result['checks'], 'name'))->toBe(['OAuth client', 'Portal access', 'Single sign-on']);
+    Http::assertNothingSent();
+});
+
+it('still fails a portal-only app whose client is revoked', function () {
+    $application = portalOnlyApp();
+    $application->oauthClient->forceFill(['revoked' => true])->save();
+
+    expect(app(CheckApplicationConnection::class)->handle($application)['healthy'])->toBeFalse();
+});
+
+it('fails a portal-only app that cannot use client credentials', function () {
+    $application = portalOnlyApp();
+    $application->oauthClient->forceFill(['grant_types' => []])->save();
+
+    expect(checkOf($application, 'Portal access')['ok'])->toBeFalse();
+});
+
+it('passes id:check for a portal-only app', function () {
+    Http::fake();
+    portalOnlyApp();
+
+    $this->artisan('id:check', ['slug' => 'pitch'])->assertSuccessful();
+});
+
+it('reduces the pitch registration to portal access in the migration', function () {
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        name: 'Pitch',
+        redirectUris: ['https://pitch.test/auth/sso/callback'],
+        confidential: true,
+    );
+    $client->forceFill(['grant_types' => [...$client->grant_types, 'client_credentials']])->save();
+    $secret = $client->secret;
+    $application = Application::create([
+        'name' => 'Pitch',
+        'slug' => 'pitch',
+        'oauth_client_id' => $client->getKey(),
+        'logout_secret' => Str::random(64),
+        'active' => true,
+    ]);
+
+    $migration = require database_path('migrations/2026_11_04_000000_reduce_pitch_registration_to_portal_access.php');
+    $migration->up();
+    $migration->up();
+
+    $application->refresh();
+    $client->refresh();
+
+    expect($application->signsInThroughId())->toBeFalse()
+        ->and($application->logout_secret)->toBeNull()
+        ->and($application->launch_url)->toBe('https://pitch.test')
+        ->and($client->redirect_uris)->toBe([])
+        ->and($client->grant_types)->toBe(['client_credentials'])
+        ->and($client->secret)->toBe($secret)
+        ->and(app(CheckApplicationConnection::class)->handle($application)['healthy'])->toBeTrue();
+});
+
+it('leaves other apps alone in the pitch migration', function () {
+    $application = wiredApp();
+
+    $migration = require database_path('migrations/2026_11_04_000000_reduce_pitch_registration_to_portal_access.php');
+    $migration->up();
+
+    expect($application->fresh()->signsInThroughId())->toBeTrue()
+        ->and($application->fresh()->logout_secret)->not->toBeNull();
+});

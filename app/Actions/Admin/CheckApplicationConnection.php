@@ -25,19 +25,46 @@ final class CheckApplicationConnection
      */
     public function handle(Application $application): array
     {
-        $checks = [
+        if ($application->oauthClient !== null && ! $application->signsInThroughId()) {
+            return $this->summarise([
+                $this->client($application),
+                $this->portalGrant($application),
+                $this->pass('Single sign-on', 'Not used. Users sign in to the app itself, so there is no callback or logout endpoint to check.'),
+            ]);
+        }
+
+        return $this->summarise([
             $this->client($application),
             $this->redirectUri($application),
             $this->logoutSecret($application),
             $this->logoutEndpoint($application),
             $this->typedEvents($application),
             $this->deliveries($application),
-        ];
+        ]);
+    }
 
+    /**
+     * @param  list<array{name: string, ok: bool, detail: string}>  $checks
+     * @return array{healthy: bool, checks: list<array{name: string, ok: bool, detail: string}>}
+     */
+    private function summarise(array $checks): array
+    {
         return [
             'healthy' => ! in_array(false, array_column($checks, 'ok'), true),
             'checks' => $checks,
         ];
+    }
+
+    /**
+     * @return array{name: string, ok: bool, detail: string}
+     */
+    private function portalGrant(Application $application): array
+    {
+        $grants = $application->oauthClient?->grant_types;
+
+        return is_array($grants) && in_array('client_credentials', $grants, true)
+            ? $this->pass('Portal access', 'Client credentials granted, so the app can fetch its portal switcher.')
+            : $this->fail('Portal access', 'No client_credentials grant, so the portal switcher stays empty.');
     }
 
     /**
