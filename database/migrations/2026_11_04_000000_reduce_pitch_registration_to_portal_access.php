@@ -8,13 +8,9 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Pitch has its own passkey, emailed code and TOTP sign-in and never used
-     * ID for sessions, but it was registered like an id-client app: a callback
-     * URI and a logout secret for endpoints it does not have, so id:check
-     * failed it. What pitch does use is the portal switcher, which needs only
-     * client_credentials. See PITCH-173.
-     *
-     * The client id and secret stay as they are, so pitch's .env keeps working.
+     * Pitch has its own sign-in and only uses ID for the portal switcher, so
+     * it keeps client_credentials and loses the SSO callback and logout secret.
+     * The client id and secret stay, so its .env keeps working.
      */
     public function up(): void
     {
