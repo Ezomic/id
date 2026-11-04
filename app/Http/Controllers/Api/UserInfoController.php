@@ -37,6 +37,7 @@ class UserInfoController extends Controller
             'sub' => (string) $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'email_verified' => $user->email_verified_at !== null,
         ];
 
         // The estate-wide list tells the caller which *other* apps this user
