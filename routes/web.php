@@ -50,7 +50,7 @@ Route::get('.well-known/jwks.json', [OidcDiscoveryController::class, 'jwks'])->n
 
 // Signing in with a QR code. Switched off together by the admin setting, and
 // each route is throttled on its own.
-Route::middleware('qr.enabled')->group(function () {
+Route::middleware(['qr.enabled', 'qr.private'])->group(function () {
     Route::middleware('guest')->group(function () {
         Route::post('qr-login', [QrLoginController::class, 'create'])->middleware('throttle:qr-create')->name('qr.create');
         Route::post('qr-login/redeem', [QrLoginController::class, 'redeem'])->middleware('throttle:qr-redeem')->name('qr.redeem');

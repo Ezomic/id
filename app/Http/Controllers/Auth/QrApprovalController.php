@@ -48,7 +48,7 @@ class QrApprovalController extends Controller
         }
 
         return $user instanceof User
-            ? $this->render('owner', $request, $qrLogin)
+            ? $this->render($qrLogin->approver_user_id === $user->id ? 'owner' : 'taken', $request, $qrLogin)
             : $this->showToRequester($request, $qrLogin, $credential);
     }
 
@@ -131,8 +131,24 @@ class QrApprovalController extends Controller
             $qrLogin->effectiveStatus() === QrLogin::PENDING && ! $qrLogin->isClaimed() ? 'claim' : 'taken',
             $request,
             $qrLogin,
-            ['credential' => $credential],
+            ['credential' => $credential, 'email' => $this->masked($qrLogin->approver)],
         );
+    }
+
+    /**
+     * The claimant is told whose account this signs them in to, so a code from
+     * someone else's screen is recognisable. Masked, because anyone who can see
+     * the QR can open this page.
+     */
+    private function masked(?User $user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        [$local, $domain] = array_pad(explode('@', $user->email, 2), 2, '');
+
+        return substr($local, 0, 1).str_repeat('*', max(2, strlen($local) - 1)).'@'.$domain;
     }
 
     private function outcome(QrLogin $qrLogin, User $user): string

@@ -46,10 +46,10 @@ class RedeemQrLogin
 
         $this->policy->forgetAll($session);
 
-        // The same remembered session every other way in produces, and no
-        // TrustedDevice row: signing in this way does not vouch for the device.
+        // Logging in migrates the session id, which is what defeats fixation.
+        // Remembered like every other way in, and no TrustedDevice row:
+        // signing in this way does not vouch for the device.
         Auth::login($user, remember: true);
-        $session->regenerate();
 
         return $user;
     }

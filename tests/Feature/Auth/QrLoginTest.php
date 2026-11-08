@@ -790,6 +790,28 @@ describe('from a signed-in device (direction B)', function () {
         expect(QrLogin::sole()->binding_hash)->toBeNull();
     });
 
+    it('tells the claimant whose account a code signs them in to, masked', function () {
+        $user = User::factory()->create(['email' => 'bo@test.test']);
+        [$creator] = qrCreatorStarts($user);
+
+        qrBrowser();
+        $this->get(route('qr.show', $creator['token']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('mode', 'claim')->where('email', 'b**@test.test'))
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertHeader('Cache-Control', 'no-store, private');
+    });
+
+    it('shows nothing about a claimant to a signed-in user who does not own the code', function () {
+        $user = User::factory()->create();
+        [$creator] = qrCreatorStarts($user);
+        qrBrowser();
+        $this->post(route('qr.claim', $creator['token']));
+
+        qrBrowser(User::factory()->create());
+        $this->get(route('qr.show', $creator['token']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('mode', 'taken'));
+    });
+
     it('tells a signed-in user opening such a code that it is for another device', function () {
         $user = User::factory()->create();
         [$creator, $desktop] = qrCreatorStarts($user);

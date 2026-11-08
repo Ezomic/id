@@ -231,6 +231,11 @@ function submitApproval(): void {
                     will ask you to pick it before this one is signed in. Only
                     continue if you just scanned that code yourself.
                 </p>
+                <p v-if="email" class="text-sm">
+                    This signs this device in as
+                    <span class="font-medium">{{ email }}</span
+                    >. If that is not your account, stop here.
+                </p>
             </div>
             <Form
                 v-if="credential"
