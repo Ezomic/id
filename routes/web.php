@@ -7,10 +7,13 @@ use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\FailedSignInController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\LogoutDeliveryController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\OidcDiscoveryController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\LoginCodeController;
+use App\Http\Controllers\Auth\QrApprovalController;
+use App\Http\Controllers\Auth\QrLoginController;
 use App\Http\Controllers\Auth\ReauthenticateController;
 use App\Http\Controllers\Auth\RecoveryCodeController;
 use App\Http\Controllers\Auth\SignOutController;
@@ -44,6 +47,25 @@ Route::get('health/scheduler', SchedulerHealthController::class)->name('health.s
 // seven apps depend on the latter.
 Route::get('.well-known/openid-configuration', [OidcDiscoveryController::class, 'configuration'])->name('oidc.configuration');
 Route::get('.well-known/jwks.json', [OidcDiscoveryController::class, 'jwks'])->name('oidc.jwks');
+
+// Signing in with a QR code. Switched off together by the admin setting, and
+// each route is throttled on its own.
+Route::middleware('qr.enabled')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::post('qr-login', [QrLoginController::class, 'create'])->middleware('throttle:qr-create')->name('qr.create');
+        Route::post('qr-login/redeem', [QrLoginController::class, 'redeem'])->middleware('throttle:qr-redeem')->name('qr.redeem');
+        Route::post('qr/{credential}/claim', [QrApprovalController::class, 'claim'])->middleware('throttle:qr-code')->name('qr.claim');
+    });
+
+    Route::get('qr-login/status', [QrLoginController::class, 'status'])->middleware('throttle:qr-poll')->name('qr.status');
+    Route::post('qr-login/code', [QrLoginController::class, 'code'])->middleware('throttle:qr-code')->name('qr.code');
+    Route::get('qr/{credential}', [QrApprovalController::class, 'show'])->middleware('throttle:qr-code')->name('qr.show');
+
+    Route::middleware(['auth', 'throttle:qr-approve'])->group(function () {
+        Route::post('qr/{credential}/approve', [QrApprovalController::class, 'approve'])->name('qr.approve');
+        Route::post('qr/{credential}/deny', [QrApprovalController::class, 'deny'])->name('qr.deny');
+    });
+});
 
 Route::middleware('guest')->group(function () {
     Route::post('login/code', [LoginCodeController::class, 'send'])
@@ -112,6 +134,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 
     Route::get('access-audit', [AccessAuditController::class, 'index'])->name('access-audit.index');
+
+    Route::get('settings', [AdminSettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('settings', [AdminSettingsController::class, 'update'])->middleware('reauth')->name('settings.update');
 
     Route::get('failed-sign-ins', [FailedSignInController::class, 'index'])->name('failed-sign-ins.index');
 

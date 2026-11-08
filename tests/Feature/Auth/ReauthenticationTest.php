@@ -72,6 +72,7 @@ dataset('guarded actions', [
     }],
     'application update' => [fn () => ['PUT', route('admin.applications.update', Application::create(['name' => 'Zero', 'slug' => 'zero', 'active' => true])), route('admin.applications.index')]],
     'secret rotation' => [fn () => ['POST', route('admin.applications.rotate-secret', Application::create(['name' => 'Zero', 'slug' => 'zero', 'active' => true])), route('admin.applications.index')]],
+    'qr sign-in switch' => [fn () => ['PUT', route('admin.settings.update'), route('admin.settings.edit')]],
     'recovery code regeneration' => [fn () => ['POST', route('recovery-codes.regenerate'), route('security.edit')]],
     'account deletion' => [fn () => ['DELETE', route('profile.destroy'), route('profile.edit')]],
 ]);

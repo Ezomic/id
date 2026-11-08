@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\QrLoginPolicy;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -53,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                 'createdClient' => $request->session()->get('createdClient'),
                 'connectionCheck' => $request->session()->get('connectionCheck'),
             ],
+            'qrLoginEnabled' => fn (): bool => app(QrLoginPolicy::class)->enabled(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

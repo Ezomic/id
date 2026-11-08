@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Auth\RecordFailedSignIn;
+use App\Http\Middleware\EnsureQrLoginEnabled;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -49,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'qr.enabled' => EnsureQrLoginEnabled::class,
             'client' => EnsureClientIsResourceOwner::class,
             'reauth' => RequireRecentAuthentication::class,
         ]);

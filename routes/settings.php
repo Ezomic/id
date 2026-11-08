@@ -6,6 +6,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RecoveryCodeController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
+use App\Http\Controllers\Settings\SignInAnotherDeviceController;
 use App\Http\Controllers\Settings\SignInHistoryController;
 use App\Http\Controllers\Settings\TrustedDeviceController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/sessions', [SessionController::class, 'index'])->name('sessions.edit');
     Route::delete('settings/sessions/others', [SessionController::class, 'destroyOthers'])->name('sessions.destroyOthers');
     Route::delete('settings/sessions/{id}', [SessionController::class, 'destroy'])->name('sessions.destroy');
+
+    Route::middleware('qr.enabled')->group(function () {
+        Route::get('settings/sign-in-another-device', [SignInAnotherDeviceController::class, 'edit'])->name('sign-in-another-device.edit');
+        Route::post('settings/sign-in-another-device', [SignInAnotherDeviceController::class, 'store'])->middleware('throttle:qr-create')->name('sign-in-another-device.store');
+    });
 
     Route::get('settings/sign-in-history', [SignInHistoryController::class, 'index'])->name('sign-in-history.edit');
     Route::post('settings/trusted-devices', [TrustedDeviceController::class, 'store'])->name('trusted-devices.store');

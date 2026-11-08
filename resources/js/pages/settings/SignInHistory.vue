@@ -39,6 +39,7 @@ defineOptions({
 const methodLabels: Record<string, string> = {
     passkey: 'Passkey',
     email_code: 'Email code',
+    qr: 'QR code',
     recovery_code: 'Recovery code',
     other: 'Other',
 };

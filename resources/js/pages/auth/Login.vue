@@ -3,6 +3,7 @@ import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasskeyVerify from '@/components/PasskeyVerify.vue';
+import QrLoginPanel from '@/components/QrLoginPanel.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { recoveryCode } from '@/routes/login';
 import { send, verify } from '@/routes/login/code';
+import { code as qrCode } from '@/routes/qr';
 
 defineOptions({
     layout: {
@@ -24,6 +26,7 @@ const props = defineProps<{
     email?: string;
     codeSent?: boolean;
     recoveryMode?: boolean;
+    qrLoginEnabled?: boolean;
 }>();
 
 const usingRecovery = ref(props.recoveryMode ?? false);
@@ -158,6 +161,52 @@ const usingRecovery = ref(props.recoveryMode ?? false);
                 <TextLink :href="login()">Use a different email</TextLink>
             </div>
         </Form>
+
+        <section
+            v-if="qrLoginEnabled"
+            class="space-y-4 border-t border-border pt-6"
+            aria-labelledby="qr-heading"
+        >
+            <div class="space-y-1 text-center">
+                <h2 id="qr-heading" class="text-sm font-medium">
+                    Sign in with your phone
+                </h2>
+                <p class="text-sm text-muted-foreground">
+                    Scan this with a phone that is already signed in to ID.
+                </p>
+            </div>
+
+            <QrLoginPanel />
+
+            <Form
+                v-bind="qrCode.form()"
+                v-slot="{ errors, processing }"
+                class="grid gap-2"
+            >
+                <Label for="qr-code-entry" class="text-sm font-normal">
+                    Showing a code on a signed-in device instead? Type it here.
+                </Label>
+                <div class="flex gap-2">
+                    <Input
+                        id="qr-code-entry"
+                        name="code"
+                        required
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        placeholder="ABCD-EFGH"
+                        class="font-mono uppercase"
+                    />
+                    <Button
+                        type="submit"
+                        variant="outline"
+                        :disabled="processing"
+                    >
+                        Go
+                    </Button>
+                </div>
+                <InputError :message="errors.code" />
+            </Form>
+        </section>
 
         <div class="mt-6 text-center text-sm text-muted-foreground">
             <button
