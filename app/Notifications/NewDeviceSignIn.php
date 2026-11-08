@@ -60,6 +60,7 @@ class NewDeviceSignIn extends Notification
         return match ($this->method) {
             'passkey' => 'Passkey',
             'email_code' => 'Email code',
+            'qr' => 'QR code',
             default => 'Other',
         };
     }

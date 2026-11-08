@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Services\QrLoginPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +27,7 @@ class FortifyServiceProvider extends ServiceProvider
             'email' => $request->session()->get('login_email'),
             'codeSent' => (bool) $request->session()->get('code_sent'),
             'recoveryMode' => (bool) $request->session()->get('recovery_mode'),
+            'qrLoginEnabled' => app(QrLoginPolicy::class)->enabled(),
         ]));
 
         $this->configureRateLimiting();
@@ -44,6 +47,24 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('portal-lookups', fn (Request $request) => Limit::perMinute(60)->by('portal-lookups:'.$this->clientKey($request)));
 
         RateLimiter::for('estate-reads', fn (Request $request) => Limit::perMinute(30)->by('estate-reads:'.$this->clientKey($request)));
+
+        // Creating writes a row, so it is bounded by address. Polling is one
+        // request every two seconds per open tab.
+        RateLimiter::for('qr-create', fn (Request $request) => Limit::perMinute(10)->by('qr-create|'.$request->ip()));
+
+        RateLimiter::for('qr-poll', fn (Request $request) => Limit::perMinute(60)->by('qr-poll|'.$request->session()->getId().'|'.$request->ip()));
+
+        RateLimiter::for('qr-redeem', fn (Request $request) => Limit::perMinute(10)->by('qr-redeem|'.$request->session()->getId().'|'.$request->ip()));
+
+        RateLimiter::for('qr-approve', fn (Request $request) => Limit::perMinute(10)->by('qr-approve|'.($request->user() instanceof User ? $request->user()->id : 'guest').'|'.$request->ip()));
+
+        // A short code is 40 bits and lives two minutes; this is what makes
+        // guessing one hopeless. Per address and per session, so rotating
+        // addresses does not reset the count.
+        RateLimiter::for('qr-code', fn (Request $request) => [
+            Limit::perMinute(10)->by('qr-code|'.$request->ip()),
+            Limit::perMinute(10)->by('qr-code|'.$request->session()->getId()),
+        ]);
 
         RateLimiter::for('passkeys', function (Request $request) {
             $identifier = $request->string('credential.id')->value() ?: $request->session()->getId();

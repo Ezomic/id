@@ -91,6 +91,7 @@ class RecordSignIn
             'passkey.login' => 'passkey',
             'login.code.verify' => 'email_code',
             'login.recovery-code' => 'recovery_code',
+            'qr.redeem' => 'qr',
             default => 'other',
         };
     }

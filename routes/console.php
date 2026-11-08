@@ -4,6 +4,7 @@ use App\Models\AccessAudit;
 use App\Models\AuthorizedClient;
 use App\Models\LogoutNotification;
 use App\Models\PortalLookup;
+use App\Models\QrLogin;
 use App\Models\SignInEvent;
 use App\Models\TrustedDevice;
 use App\Services\SchedulerHeartbeat;
@@ -31,6 +32,7 @@ Schedule::command('model:prune', ['--model' => [
     AuthorizedClient::class,
     LogoutNotification::class,
     PortalLookup::class,
+    QrLogin::class,
     TrustedDevice::class,
 ]])->daily();
 

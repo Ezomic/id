@@ -40,6 +40,7 @@ declare module '@inertiajs/core' {
                     }[];
                 } | null;
             };
+            qrLoginEnabled: boolean;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

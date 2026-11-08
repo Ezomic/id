@@ -75,6 +75,10 @@ function describe(audit: Audit): string {
             return `enabled ${app}`;
         case 'force_sign_out':
             return `signed ${subject} out everywhere`;
+        case 'qr_login_enable':
+            return 'turned QR sign-in on';
+        case 'qr_login_disable':
+            return 'turned QR sign-in off';
         case 'disconnect':
             return `disconnected ${subject} from ${app}`;
         default:
