@@ -27,10 +27,12 @@ class IssueRecoveryCodes extends Command
      */
     public function handle(GenerateRecoveryCodes $generate): int
     {
-        $user = User::where('email', $this->argument('email'))->first();
+        $email = $this->argument('email');
+        $email = is_string($email) ? $email : '';
+        $user = User::where('email', $email)->first();
 
         if ($user === null) {
-            $this->error('No account with email ['.$this->argument('email').'].');
+            $this->error("No account with email [{$email}].");
 
             return self::FAILURE;
         }
