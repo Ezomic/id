@@ -17,6 +17,12 @@ use Throwable;
 
 class AttachIdToken
 {
+    /**
+     * Only these grants put a user in `sub`. On client_credentials it is the
+     * client's UUID, which an int cast would turn into some user's id.
+     */
+    private const USER_GRANTS = ['authorization_code', 'refresh_token'];
+
     public function __construct(private readonly IdTokenIssuer $issuer) {}
 
     /**
@@ -50,6 +56,10 @@ class AttachIdToken
 
     private function mint(Request $request, Response $response): ?string
     {
+        if (! in_array($request->input('grant_type'), self::USER_GRANTS, true)) {
+            return null;
+        }
+
         $body = json_decode((string) $response->getContent(), true);
 
         if (! is_array($body) || ! is_string($body['access_token'] ?? null)) {
@@ -79,7 +89,7 @@ class AttachIdToken
 
         $subject = $token->claims()->get('sub');
         $audience = $token->claims()->get('aud', []);
-        $user = is_scalar($subject) ? User::find((int) $subject) : null;
+        $user = is_string($subject) && ctype_digit($subject) ? User::find((int) $subject) : null;
 
         if (! $user instanceof User) {
             return null;
