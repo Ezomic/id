@@ -2,8 +2,27 @@
 
 use App\Models\Bookmark;
 use App\Models\User;
+use App\Services\PublicAddressResolver;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
+
+/*
+ * No real DNS in tests: names under .internal resolve to the private network,
+ * every other name to a public address, and IP literals are themselves.
+ */
+beforeEach(function () {
+    app()->instance(PublicAddressResolver::class, new class extends PublicAddressResolver
+    {
+        protected function addresses(string $host): array
+        {
+            if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+                return parent::addresses($host);
+            }
+
+            return [str_ends_with($host, '.internal') ? '10.0.0.5' : '93.184.216.34'];
+        }
+    });
+});
 
 it('lists only your own bookmarks, newest first', function () {
     $user = User::factory()->create();
@@ -195,4 +214,58 @@ it('scopes unread and active bookmarks', function () {
 
     expect($user->bookmarks()->unread()->count())->toBe(1)
         ->and($user->bookmarks()->active()->count())->toBe(2);
+});
+
+/*
+ * ID-114. The fetched title is shown back to the user, so a bookmark of an
+ * internal address read that service's page through ID.
+ */
+it('does not fetch internal addresses', function (string $url) {
+    Http::fake(['*' => Http::response('<html><head><title>Internal admin</title></head></html>')]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('bookmarks.store'), ['url' => $url])
+        ->assertSessionHasNoErrors();
+
+    Http::assertNothingSent();
+    expect($user->bookmarks()->sole()->title)->not->toBe('Internal admin');
+})->with([
+    'loopback' => 'http://127.0.0.1:8080/admin',
+    'cloud metadata' => 'http://169.254.169.254/latest/meta-data/',
+    'private network' => 'http://10.1.2.3/',
+    'IPv6 loopback' => 'http://[::1]/',
+    'name that resolves inside' => 'https://intranet.internal/',
+]);
+
+it('does not follow a redirect to an internal address', function () {
+    Http::fake([
+        'public.example.com/*' => Http::response('', 302, ['Location' => 'http://127.0.0.1:8080/admin']),
+        '*' => Http::response('<html><head><title>Internal admin</title></head></html>'),
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('bookmarks.store'), ['url' => 'https://public.example.com/go'])
+        ->assertSessionHasNoErrors();
+
+    Http::assertSentCount(1);
+    expect($user->bookmarks()->sole()->title)->toBe('public.example.com');
+});
+
+it('still follows a redirect to another public page', function () {
+    Http::fake([
+        'old.example.net/*' => Http::response('', 301, ['Location' => 'https://new.example.org/post']),
+        'new.example.org/*' => Http::response('<html><head><title>Moved here</title></head></html>'),
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('bookmarks.store'), ['url' => 'https://old.example.net/post'])
+        ->assertSessionHasNoErrors();
+
+    expect($user->bookmarks()->sole()->title)->toBe('Moved here');
 });
