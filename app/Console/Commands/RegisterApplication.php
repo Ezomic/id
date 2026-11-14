@@ -68,7 +68,8 @@ class RegisterApplication extends Command
             }
         }
 
-        $slug = Str::slug((string) $this->argument('slug'));
+        $slug = $this->argument('slug');
+        $slug = Str::slug(is_string($slug) ? $slug : '');
 
         if (Application::where('slug', $slug)->exists()) {
             $this->error("An application with slug [{$slug}] already exists.");
