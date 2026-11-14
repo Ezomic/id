@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Admin\CreateApplication;
 use App\Models\Application;
 use App\Models\User;
 use App\Services\OidcKeys;
@@ -159,4 +160,31 @@ it('leaves a token response alone when openid was not requested', function () {
     // The seven consumers request no scopes at all and must not start getting
     // an id_token they did not ask for.
     expect(exchange($application, $client, $user, ''))->not->toHaveKey('id_token');
+});
+
+/*
+ * ID-111. A client_credentials token has the client's UUID as its subject,
+ * which an int cast turns into a small user id. Asking for openid on that
+ * grant used to return an ID token for that user with nobody signed in.
+ */
+it('does not mint an id token on a client credentials grant', function () {
+    User::factory()->count(25)->create();
+
+    $result = app(CreateApplication::class)->handle([
+        'name' => 'Relay',
+        'slug' => 'relay',
+        'redirect_uri' => 'https://relay.test/auth/sso/callback',
+    ]);
+
+    $token = $this->post('/oauth/token', [
+        'grant_type' => 'client_credentials',
+        'client_id' => $result['client_id'],
+        'client_secret' => $result['client_secret'],
+        'scope' => 'openid identity estate',
+    ])->assertOk()->json();
+
+    $parsed = (new Parser(new JoseEncoder))->parse($token['access_token']);
+
+    expect($token)->not->toHaveKey('id_token')
+        ->and($parsed->claims()->get('scopes'))->toBe([]);
 });

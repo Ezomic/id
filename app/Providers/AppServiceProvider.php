@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Models\OAuthClient;
+use App\Services\ScopeRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Bridge\ScopeRepository as PassportScopeRepository;
 use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
@@ -17,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(PassportScopeRepository::class, ScopeRepository::class);
     }
 
     /**
