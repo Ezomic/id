@@ -4,11 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class LinkMetadata
 {
+    private const MAX_REDIRECTS = 3;
+
+    private const MAX_BYTES = 1024 * 1024;
+
+    public function __construct(private readonly PublicAddressResolver $resolver) {}
+
     /**
      * Read the title and preview image off a page. Never throws: a link that
      * cannot be reached is still worth saving, just without its metadata.
@@ -18,11 +27,9 @@ class LinkMetadata
     public function fetch(string $url): array
     {
         try {
-            $response = Http::timeout(5)
-                ->withHeaders(['User-Agent' => 'ThijssensoftwareID/1.0 (+bookmarks)'])
-                ->get($url);
+            $response = $this->get($url);
 
-            if (! $response->successful()) {
+            if ($response === null || ! $response->successful()) {
                 return ['title' => null, 'image' => null, 'favicon' => null];
             }
 
@@ -36,6 +43,76 @@ class LinkMetadata
         } catch (Throwable) {
             return ['title' => null, 'image' => null, 'favicon' => null];
         }
+    }
+
+    /**
+     * The URL is whatever a signed-in user typed, and the title comes back to
+     * them, so this must never reach the box's own loopback services or the
+     * private network. Each hop is resolved, checked and pinned to the checked
+     * address (so a second DNS answer cannot swap in another), and redirects
+     * are followed by hand so every hop gets the same check.
+     */
+    private function get(string $url): ?Response
+    {
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+            $target = $this->target($url);
+
+            if ($target === null) {
+                return null;
+            }
+
+            $response = Http::timeout(5)
+                ->withoutRedirecting()
+                ->withHeaders(['User-Agent' => 'ThijssensoftwareID/1.0 (+bookmarks)'])
+                ->withOptions($this->transportOptions(...$target))
+                ->get($url);
+
+            $location = $response->header('Location');
+
+            if (! $response->redirect() || $location === '') {
+                return $response;
+            }
+
+            $url = (string) UriResolver::resolve(new Uri($url), new Uri($location));
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{0: string, 1: int, 2: string}|null host, port and the address to connect to
+     */
+    private function target(string $url): ?array
+    {
+        $parts = parse_url($url);
+        $scheme = strtolower($parts['scheme'] ?? '');
+
+        if (! in_array($scheme, ['http', 'https'], true) || ! isset($parts['host'])) {
+            return null;
+        }
+
+        $address = $this->resolver->resolve($parts['host']);
+
+        if ($address === null) {
+            return null;
+        }
+
+        return [$parts['host'], $parts['port'] ?? ($scheme === 'https' ? 443 : 80), $address];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transportOptions(string $host, int $port, string $address): array
+    {
+        $address = str_contains($address, ':') ? "[{$address}]" : $address;
+
+        return [
+            'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$address}"]],
+            'protocols' => ['http', 'https'],
+            // Aborts mid-transfer, so a huge or endless body never sits in memory.
+            'progress' => fn (int $expected, int $downloaded): bool => max($expected, $downloaded) > self::MAX_BYTES,
+        ];
     }
 
     /**
