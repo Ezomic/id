@@ -16,6 +16,8 @@ use Laravel\Passport\Guards\TokenGuard;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    public const LOGIN_ATTEMPTS_PER_EMAIL_PER_HOUR = 30;
+
     public function boot(): void
     {
         // Passwordless: users have no password. Fortify's credential login is disabled;
@@ -35,10 +37,17 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
+        // The per-email limit ignores the IP, so rotating addresses cannot buy
+        // more guesses, or more fresh codes to guess at, for one account.
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->string('email')->value()).'|'.$request->ip());
+            $email = Str::transliterate(Str::lower($request->string('email')->value()));
+            $limits = [Limit::perMinute(5)->by($email.'|'.$request->ip())];
 
-            return Limit::perMinute(5)->by($throttleKey);
+            if ($email !== '') {
+                $limits[] = Limit::perHour(self::LOGIN_ATTEMPTS_PER_EMAIL_PER_HOUR)->by('login-email|'.$email);
+            }
+
+            return $limits;
         });
 
         // Keyed on the calling client, not the IP: the callers are seven

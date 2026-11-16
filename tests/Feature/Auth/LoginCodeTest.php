@@ -4,6 +4,7 @@ use App\Actions\Auth\SendLoginCode;
 use App\Actions\Auth\VerifyLoginCode;
 use App\Mail\LoginCodeMail;
 use App\Models\User;
+use App\Providers\FortifyServiceProvider;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Passport\ClientRepository;
@@ -192,4 +193,39 @@ it('sends an Inertia sign-in with nowhere to return to on to the dashboard', fun
         ->assertHeader('X-Inertia-Location', route('dashboard'));
 
     $this->assertAuthenticatedAs($user);
+});
+
+/*
+ * ID-113. The count used to be read from the loaded model, checked against a
+ * slow bcrypt hash and written back, so parallel guesses all saw zero and the
+ * cap bounded nothing. Each copy here was loaded before any guess landed, as
+ * concurrent requests would be.
+ */
+it('caps guesses made by requests that loaded the account at the same time', function () {
+    $user = User::factory()->create([
+        'login_code_hash' => Hash::make('123456'),
+        'login_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $requests = collect(range(1, VerifyLoginCode::MAX_ATTEMPTS + 1))->map(fn () => $user->fresh());
+    $verify = app(VerifyLoginCode::class);
+
+    $requests->slice(0, -1)->each(fn (User $stale) => expect($verify->handle($stale, '000000'))->toBeFalse());
+
+    expect($verify->handle($requests->last(), '123456'))->toBeFalse()
+        ->and($user->fresh()->login_code_hash)->toBeNull();
+});
+
+it('limits attempts per email whatever address they come from', function () {
+    $user = User::factory()->create();
+
+    foreach (range(1, FortifyServiceProvider::LOGIN_ATTEMPTS_PER_EMAIL_PER_HOUR) as $attempt) {
+        $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$attempt}"])
+            ->post(route('login.code.verify'), ['email' => $user->email, 'code' => '000000'])
+            ->assertRedirect(route('login'));
+    }
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.1'])
+        ->post(route('login.code.verify'), ['email' => $user->email, 'code' => '000000'])
+        ->assertTooManyRequests();
 });
