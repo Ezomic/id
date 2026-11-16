@@ -15,7 +15,8 @@ class RegisterEstateReader extends Command
 
     public function handle(CreateEstateReader $createEstateReader): int
     {
-        $client = $createEstateReader->handle((string) $this->argument('name'));
+        $name = $this->argument('name');
+        $client = $createEstateReader->handle(is_string($name) ? $name : '');
         $id = $client->getKey();
 
         $this->info("Registered estate reader [{$client->name}] with the estate:read scope.");
