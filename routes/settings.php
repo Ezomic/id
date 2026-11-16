@@ -19,7 +19,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->middleware('reauth')->name('profile.destroy');
 
-    Route::get('settings/profile/email/{token}', [EmailChangeController::class, 'confirm'])->name('profile.email.confirm');
+    Route::get('settings/profile/email/{token}', [EmailChangeController::class, 'confirm'])->middleware('reauth')->name('profile.email.confirm');
     Route::delete('settings/profile/email', [EmailChangeController::class, 'cancel'])->name('profile.email.cancel');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');

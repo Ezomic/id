@@ -238,3 +238,21 @@ it('offers the passkey path only when one is enrolled', function () {
             ->where('hasPasskeys', false)
         );
 });
+
+/*
+ * ID-112. Fortify guards passkey enrolment with password.confirm, which used
+ * the framework's three-hour window. A stolen session could add its own
+ * passkey long after the owner last confirmed.
+ */
+it('expires the confirmation for passkey enrolment on the same window', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => Date::now()->subMinutes(RequireRecentAuthentication::WINDOW_MINUTES + 1)->unix()])
+        ->getJson(route('passkey.registration-options'))
+        ->assertStatus(423);
+
+    $this->withSession(['auth.password_confirmed_at' => Date::now()->unix()])
+        ->getJson(route('passkey.registration-options'))
+        ->assertOk();
+});

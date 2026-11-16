@@ -58,6 +58,7 @@ it('applies the change once confirmed', function () {
     $token = requestChange($user);
 
     $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->unix()])
         ->get(route('profile.email.confirm', ['token' => $token]))
         ->assertRedirect(route('profile.edit'));
 
@@ -69,6 +70,26 @@ it('applies the change once confirmed', function () {
         ->and($user->pending_email_token)->toBeNull();
 });
 
+/*
+ * ID-112. A stolen session alone could request a change to the attacker's
+ * inbox and confirm it a minute later, which hands over every future login
+ * code. Confirming now needs a passkey or recovery code from the last 15
+ * minutes, and the link comes back to itself afterwards.
+ */
+it('requires a recent re-authentication to confirm', function () {
+    $user = User::factory()->create(['email' => 'old@example.com']);
+    $token = requestChange($user);
+    $url = route('profile.email.confirm', ['token' => $token]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->subMinutes(16)->unix()])
+        ->get($url)
+        ->assertRedirect(route('reauthenticate.show'))
+        ->assertSessionHas('url.intended', $url);
+
+    expect($user->refresh()->email)->toBe('old@example.com');
+});
+
 it('rejects an expired confirmation', function () {
     $user = User::factory()->create(['email' => 'old@example.com']);
     $token = requestChange($user);
@@ -76,6 +97,7 @@ it('rejects an expired confirmation', function () {
     $user->forceFill(['pending_email_expires_at' => now()->subMinute()])->save();
 
     $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->unix()])
         ->get(route('profile.email.confirm', ['token' => $token]))
         ->assertRedirect(route('profile.edit'));
 
@@ -87,6 +109,7 @@ it('rejects a wrong token', function () {
     requestChange($user);
 
     $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->unix()])
         ->get(route('profile.email.confirm', ['token' => 'not-the-token']))
         ->assertRedirect(route('profile.edit'));
 
@@ -100,6 +123,7 @@ it('refuses to confirm an address someone else claimed in the meantime', functio
     User::factory()->create(['email' => 'new@example.com']);
 
     $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->unix()])
         ->get(route('profile.email.confirm', ['token' => $token]))
         ->assertRedirect(route('profile.edit'));
 
@@ -113,6 +137,7 @@ it('cannot confirm another account\'s pending change', function () {
     $other = User::factory()->create();
 
     $this->actingAs($other)
+        ->withSession(['auth.password_confirmed_at' => now()->unix()])
         ->get(route('profile.email.confirm', ['token' => $token]))
         ->assertRedirect(route('profile.edit'));
 
